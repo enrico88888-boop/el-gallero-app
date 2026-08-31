@@ -627,68 +627,75 @@ document.addEventListener('DOMContentLoaded', () => {
   // ---------------- MODIFICA COMANDA & SCONTO CARTA FEDELTÀ ----------------
 
   window.adminOpenEditBooking = function(idOrCode) {
-    const b = allBookings.find(it => it.id === idOrCode || it.code === idOrCode);
-    if (!b) return;
+    try {
+      const b = allBookings.find(it => String(it.id) === String(idOrCode) || String(it.code) === String(idOrCode) || (it._id && String(it._id) === String(idOrCode)));
+      if (!b) {
+        console.warn('Comanda non trovata:', idOrCode);
+        return;
+      }
 
-    currentEditingBooking = JSON.parse(JSON.stringify(b));
-    tempEditItems = Array.isArray(b.items) ? JSON.parse(JSON.stringify(b.items)) : [];
+      currentEditingBooking = JSON.parse(JSON.stringify(b));
+      tempEditItems = Array.isArray(b.items) ? JSON.parse(JSON.stringify(b.items)) : [];
 
-    const idInput = document.getElementById('editBookingId');
-    const codeSpan = document.getElementById('editBookingCode');
-    const custName = document.getElementById('editCustName');
-    const custPhone = document.getElementById('editCustPhone');
-    const dateInput = document.getElementById('editPickupDate');
-    const timeInput = document.getElementById('editPickupTime');
-    const statusSelect = document.getElementById('editStatus');
-    const orderTypeSelect = document.getElementById('editOrderType');
-    const delivAddress = document.getElementById('editDeliveryAddress');
-    const delivGroup = document.getElementById('editDeliveryAddressGroup');
-    const notesInput = document.getElementById('editNotes');
-    const adminNotesInput = document.getElementById('editAdminNotes');
-    const hasFidelityCardCheck = document.getElementById('editHasFidelityCard');
-    const fidelityDiscInput = document.getElementById('editFidelityDiscount');
-    const fidelityDiscGroup = document.getElementById('fidelityDiscountInputGroup');
+      const idInput = document.getElementById('editBookingId');
+      const codeSpan = document.getElementById('editBookingCode');
+      const custName = document.getElementById('editCustName');
+      const custPhone = document.getElementById('editCustPhone');
+      const dateInput = document.getElementById('editPickupDate');
+      const timeInput = document.getElementById('editPickupTime');
+      const statusSelect = document.getElementById('editStatus');
+      const orderTypeSelect = document.getElementById('editOrderType');
+      const delivAddress = document.getElementById('editDeliveryAddress');
+      const delivGroup = document.getElementById('editDeliveryAddressGroup');
+      const notesInput = document.getElementById('editNotes');
+      const adminNotesInput = document.getElementById('editAdminNotes');
+      const hasFidelityCardCheck = document.getElementById('editHasFidelityCard');
+      const fidelityDiscInput = document.getElementById('editFidelityDiscount');
+      const fidelityDiscGroup = document.getElementById('fidelityDiscountInputGroup');
 
-    if (idInput) idInput.value = b.id || b.code;
-    if (codeSpan) codeSpan.textContent = `(${b.code || ''})`;
-    if (custName) custName.value = b.customerName || '';
-    if (custPhone) custPhone.value = b.customerPhone || '';
-    if (dateInput) dateInput.value = b.pickupDate || '';
-    if (timeInput) timeInput.value = b.pickupTime || '';
-    if (statusSelect) statusSelect.value = b.status || 'in_attesa';
-    
-    const isDeliv = (b.orderType === 'domicilio');
-    if (orderTypeSelect) orderTypeSelect.value = isDeliv ? 'domicilio' : 'ritiro';
-    if (delivGroup) delivGroup.style.display = isDeliv ? 'block' : 'none';
-    if (delivAddress) delivAddress.value = b.deliveryAddress || '';
+      if (idInput) idInput.value = b.id || b.code || '';
+      if (codeSpan) codeSpan.textContent = `(${b.code || ''})`;
+      if (custName) custName.value = b.customerName || '';
+      if (custPhone) custPhone.value = b.customerPhone || '';
+      if (dateInput) dateInput.value = b.pickupDate || '';
+      if (timeInput) timeInput.value = b.pickupTime || '';
+      if (statusSelect) statusSelect.value = b.status || 'in_attesa';
+      
+      const isDeliv = (b.orderType === 'domicilio');
+      if (orderTypeSelect) orderTypeSelect.value = isDeliv ? 'domicilio' : 'ritiro';
+      if (delivGroup) delivGroup.style.display = isDeliv ? 'block' : 'none';
+      if (delivAddress) delivAddress.value = b.deliveryAddress || '';
 
-    if (notesInput) notesInput.value = b.notes || '';
-    if (adminNotesInput) adminNotesInput.value = b.adminNotes || '';
+      if (notesInput) notesInput.value = b.notes || '';
+      if (adminNotesInput) adminNotesInput.value = b.adminNotes || '';
 
-    // Fidelity Card and Discount
-    const hasFid = Boolean(b.hasFidelityCard || (b.fidelityDiscount && b.fidelityDiscount > 0));
-    if (hasFidelityCardCheck) hasFidelityCardCheck.checked = hasFid;
-    if (fidelityDiscGroup) fidelityDiscGroup.style.display = hasFid ? 'block' : 'none';
-    if (fidelityDiscInput) fidelityDiscInput.value = Number(b.fidelityDiscount || 2.00).toFixed(2);
+      // Fidelity Card and Discount
+      const hasFid = Boolean(b.hasFidelityCard || (b.fidelityDiscount && Number(b.fidelityDiscount) > 0));
+      if (hasFidelityCardCheck) hasFidelityCardCheck.checked = hasFid;
+      if (fidelityDiscGroup) fidelityDiscGroup.style.display = hasFid ? 'block' : 'none';
+      if (fidelityDiscInput) fidelityDiscInput.value = Number(b.fidelityDiscount || 2.00).toFixed(2);
 
-    // Populate Products Dropdown
-    const addSelect = document.getElementById('editAddProductSelect');
-    if (addSelect) {
-      let optHtml = '<option value="">-- Aggiungi un piatto dal menu --</option>';
-      allProducts.forEach(p => {
-        optHtml += `<option value="${p.id}">${escapeHtml(p.name)} (${Number(p.price).toFixed(2)} €)</option>`;
-      });
-      addSelect.innerHTML = optHtml;
-    }
+      // Populate Products Dropdown
+      const addSelect = document.getElementById('editAddProductSelect');
+      if (addSelect) {
+        let optHtml = '<option value="">-- Aggiungi un piatto dal menu --</option>';
+        allProducts.forEach(p => {
+          optHtml += `<option value="${p.id}">${escapeHtml(p.name)} (${Number(p.price).toFixed(2)} €)</option>`;
+        });
+        addSelect.innerHTML = optHtml;
+      }
 
-    renderEditComandaItemsList();
-    window.adminRecalculateEditTotal();
+      renderEditComandaItemsList();
+      window.adminRecalculateEditTotal();
 
-    const modal = document.getElementById('editBookingModal');
-    if (modal) {
-      modal.classList.add('active');
-      modal.style.display = 'flex';
-      modal.style.zIndex = '999999';
+      const modal = document.getElementById('editBookingModal');
+      if (modal) {
+        modal.classList.add('active');
+        modal.style.setProperty('display', 'flex', 'important');
+        modal.style.setProperty('z-index', '999999', 'important');
+      }
+    } catch (err) {
+      console.error('Error in adminOpenEditBooking:', err);
     }
   };
 
@@ -799,10 +806,20 @@ document.addEventListener('DOMContentLoaded', () => {
   window.adminToggleFidelityDiscount = function(isChecked) {
     const group = document.getElementById('fidelityDiscountInputGroup');
     if (group) group.style.display = isChecked ? 'block' : 'none';
+    const input = document.getElementById('editFidelityDiscount');
+    if (input && isChecked && (!input.value || parseFloat(input.value) <= 0)) {
+      input.value = '2.00';
+    }
     window.adminRecalculateEditTotal();
   };
 
   window.adminSetQuickDiscount = function(val) {
+    const check = document.getElementById('editHasFidelityCard');
+    if (check) {
+      check.checked = (val > 0);
+      const group = document.getElementById('fidelityDiscountInputGroup');
+      if (group) group.style.display = (val > 0) ? 'block' : 'none';
+    }
     const input = document.getElementById('editFidelityDiscount');
     if (input) input.value = Number(val).toFixed(2);
     window.adminRecalculateEditTotal();
