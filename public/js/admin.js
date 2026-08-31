@@ -327,6 +327,13 @@ document.addEventListener('DOMContentLoaded', () => {
     renderBookings();
   };
 
+  // Inline Comanda Editing State
+  let inlineEditingBookingId = null;
+  let inlineTempItems = [];
+  let inlineTempHasFidelity = false;
+  let inlineTempFidDiscount = 2.00;
+  let inlineTempOrderType = 'ritiro';
+
   function renderBookings() {
     if (!bookingsGrid) return;
 
@@ -366,6 +373,151 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     bookingsGrid.innerHTML = filtered.map(b => {
+      const bId = b.id || b.code;
+
+      // 1. INLINE EDITING CARD: If this booking is being edited directly in place
+      if (inlineEditingBookingId && (String(b.id) === String(inlineEditingBookingId) || String(b.code) === String(inlineEditingBookingId))) {
+        let itemsSub = 0;
+        inlineTempItems.forEach(it => {
+          itemsSub += (it.quantity || 1) * Number(it.price || 0);
+        });
+        const isDeliv = (inlineTempOrderType === 'domicilio');
+        const delivFee = isDeliv ? 2.00 : 0.00;
+        const fidDisc = inlineTempHasFidelity ? Math.max(0, Number(inlineTempFidDiscount) || 0) : 0;
+        const finalTot = Math.max(0, itemsSub + delivFee - fidDisc);
+
+        return `
+          <div class="booking-admin-card" style="border:2px solid var(--gold-primary); background:#201916; box-shadow:0 0 24px rgba(212,175,55,0.4); padding:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(212,175,55,0.3); padding-bottom:8px; margin-bottom:12px;">
+              <h4 style="margin:0; color:var(--gold-light); font-size:1.05rem; display:flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-pen-to-square text-gold"></i> Modifica Comanda <strong>${b.code}</strong>
+              </h4>
+              <span class="bkg-code-tag">${b.code}</span>
+            </div>
+
+            <!-- Client Info Inputs -->
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px; margin-bottom:10px;">
+              <div>
+                <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:block;">Nome Cliente:</label>
+                <input type="text" id="inlineEditCustName" value="${escapeHtml(b.customerName)}" style="width:100%; padding:7px 10px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px; color:#fff; font-weight:700;">
+              </div>
+              <div>
+                <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:block;">Telefono:</label>
+                <input type="tel" id="inlineEditCustPhone" value="${escapeHtml(b.customerPhone)}" style="width:100%; padding:7px 10px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px; color:#fff;">
+              </div>
+              <div>
+                <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:block;">Data Ritiro:</label>
+                <input type="date" id="inlineEditPickupDate" value="${b.pickupDate}" style="width:100%; padding:7px 10px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px; color:#fff;">
+              </div>
+              <div>
+                <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:block;">Orario Ritiro:</label>
+                <input type="text" id="inlineEditPickupTime" value="${escapeHtml(b.pickupTime)}" style="width:100%; padding:7px 10px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px; color:#fff;">
+              </div>
+            </div>
+
+            <!-- Order Type & Address -->
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px; margin-bottom:10px;">
+              <div>
+                <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:block;">Modalità:</label>
+                <select id="inlineEditOrderType" onchange="window.adminInlineToggleDelivery(this.value)" style="width:100%; padding:7px 10px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px; color:#fff;">
+                  <option value="ritiro" ${!isDeliv ? 'selected' : ''}>🏪 Ritiro in Sede (Asporto)</option>
+                  <option value="domicilio" ${isDeliv ? 'selected' : ''}>🛵 Consegna a Domicilio (+2,00 €)</option>
+                </select>
+              </div>
+              <div id="inlineEditAddressWrapper" style="display:${isDeliv ? 'block' : 'none'};">
+                <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:block;">Indirizzo Consegna:</label>
+                <input type="text" id="inlineEditAddress" value="${escapeHtml(b.deliveryAddress || '')}" placeholder="Via, civico, piano..." style="width:100%; padding:7px 10px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px; color:#fff;">
+              </div>
+            </div>
+
+            <!-- Piatti Ordinati nella Comanda con Stepper + e - -->
+            <div style="background:#140f0e; border:1px solid var(--border-color); border-radius:8px; padding:10px; margin-bottom:10px;">
+              <div style="font-size:0.8rem; font-weight:800; color:var(--gold-light); margin-bottom:6px; display:flex; justify-content:space-between;">
+                <span><i class="fa-solid fa-utensils"></i> Piatti nella Comanda:</span>
+                <span>Subtotale: <strong id="inlineItemsSubtotalVal">${itemsSub.toFixed(2).replace('.', ',')} €</strong></span>
+              </div>
+              
+              <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:8px;">
+                ${inlineTempItems.map((it, idx) => `
+                  <div style="display:flex; justify-content:space-between; align-items:center; background:#1d1715; border:1px solid rgba(255,255,255,0.06); padding:6px 8px; border-radius:4px;">
+                    <div style="flex:1;">
+                      <span style="color:#fff; font-weight:700; font-size:0.85rem;">${escapeHtml(it.name)}</span>
+                      <div style="font-size:0.72rem; color:var(--text-muted);">${Number(it.price).toFixed(2).replace('.', ',')} € cad.</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:5px;">
+                      <button type="button" onclick="window.adminInlineChangeQty(${idx}, -1)" style="width:26px; height:26px; background:#2a201c; border:1px solid var(--border-color); color:#fff; border-radius:4px; font-weight:800; cursor:pointer;">-</button>
+                      <span style="font-weight:800; min-width:20px; text-align:center; color:var(--gold-light);">${it.quantity}</span>
+                      <button type="button" onclick="window.adminInlineChangeQty(${idx}, 1)" style="width:26px; height:26px; background:#2a201c; border:1px solid var(--border-color); color:#fff; border-radius:4px; font-weight:800; cursor:pointer;">+</button>
+                    </div>
+                    <span style="min-width:50px; text-align:right; font-weight:800; color:var(--gold-light); margin:0 8px; font-size:0.85rem;">${((it.quantity || 1) * Number(it.price || 0)).toFixed(2).replace('.', ',')} €</span>
+                    <button type="button" onclick="window.adminInlineRemoveItem(${idx})" style="background:rgba(231,76,60,0.2); border:1px solid #e74c3c; color:#e74c3c; width:26px; height:26px; border-radius:4px; cursor:pointer;"><i class="fa-solid fa-trash-can" style="font-size:0.75rem;"></i></button>
+                  </div>
+                `).join('')}
+              </div>
+
+              <!-- Aggiungi Piatto dal Menu -->
+              <div style="display:flex; gap:6px;">
+                <select id="inlineAddProductSelect" style="flex:1; padding:6px 8px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px; color:#fff; font-size:0.82rem;">
+                  <option value="">-- Aggiungi piatto dal catalogo --</option>
+                  ${allProducts.map(p => `<option value="${p.id}">${escapeHtml(p.name)} (${Number(p.price).toFixed(2)} €)</option>`).join('')}
+                </select>
+                <button type="button" onclick="window.adminInlineAddProduct()" style="padding:6px 12px; background:var(--bg-surface); border:1px solid var(--border-color); color:var(--gold-light); font-weight:800; border-radius:4px; cursor:pointer; font-size:0.82rem;">
+                  <i class="fa-solid fa-plus"></i> Aggiungi
+                </button>
+              </div>
+            </div>
+
+            <!-- Spunta e Sconto Carta Fedeltà -->
+            <div style="background:rgba(212,175,55,0.08); border:1.5px solid var(--gold-primary); border-radius:8px; padding:10px; margin-bottom:10px;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:700; color:var(--gold-light); margin-bottom:6px;">
+                <input type="checkbox" id="inlineEditHasFidelity" onchange="window.adminInlineToggleFidelity(this.checked)" ${inlineTempHasFidelity ? 'checked' : ''} style="width:18px; height:18px; accent-color:var(--gold-primary);">
+                <span><i class="fa-solid fa-id-card text-gold"></i> <strong>Possessore Carta Fedeltà El Gallero</strong></span>
+              </label>
+
+              <div id="inlineFidelityGroup" style="display:${inlineTempHasFidelity ? 'block' : 'none'}; margin-top:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px;">
+                  <span style="font-size:0.8rem; color:#fff;">Importo Sconto Dedicato (€):</span>
+                  <input type="number" id="inlineEditFidDiscount" step="0.50" min="0" value="${inlineTempFidDiscount.toFixed(2)}" oninput="window.adminInlineRecalculateTotal()" style="width:90px; text-align:right; font-weight:800; color:#2ecc71; padding:4px 8px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px;">
+                </div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                  <span style="font-size:0.72rem; color:var(--text-muted);">Sconti rapidi:</span>
+                  <button type="button" class="btn-disc-chip" onclick="window.adminInlineSetQuickDiscount(1.00)">-1,00 €</button>
+                  <button type="button" class="btn-disc-chip" onclick="window.adminInlineSetQuickDiscount(2.00)">-2,00 €</button>
+                  <button type="button" class="btn-disc-chip" onclick="window.adminInlineSetQuickDiscount(3.00)">-3,00 €</button>
+                  <button type="button" class="btn-disc-chip" onclick="window.adminInlineSetQuickDiscount(5.00)">-5,00 €</button>
+                  <button type="button" class="btn-disc-chip text-muted" onclick="window.adminInlineSetQuickDiscount(0)">Azzera</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Note -->
+            <div style="margin-bottom:10px;">
+              <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:block;">Note del cliente:</label>
+              <textarea id="inlineEditNotes" rows="2" style="width:100%; padding:6px 8px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px; color:#fff; font-size:0.82rem;">${escapeHtml(b.notes || '')}</textarea>
+            </div>
+
+            <!-- Totale Ricalcolato Live -->
+            <div style="background:#15100e; border:1px dashed var(--gold-primary); border-radius:6px; padding:8px 12px; margin-bottom:12px; font-weight:800;">
+              <div style="display:flex; justify-content:space-between; font-size:1.05rem;">
+                <span style="color:#fff;">TOTALE RICALCOLATO:</span>
+                <strong class="text-gold" id="inlineGrandTotalVal">${finalTot.toFixed(2).replace('.', ',')} €</strong>
+              </div>
+            </div>
+
+            <!-- Action Buttons: Salva & Annulla -->
+            <div style="display:flex; gap:8px; justify-content:flex-end;">
+              <button type="button" onclick="window.adminCancelInlineEditBooking()" style="padding:9px 16px; background:var(--bg-surface); border:1px solid var(--border-color); color:var(--text-secondary); border-radius:6px; font-weight:700; cursor:pointer;">
+                <i class="fa-solid fa-xmark"></i> Annulla
+              </button>
+              <button type="button" onclick="window.adminSaveInlineEditBooking('${bId}')" style="padding:9px 20px; background:var(--gold-gradient); border:none; color:#120e0d; border-radius:6px; font-weight:800; cursor:pointer; font-size:0.95rem; box-shadow:0 0 14px var(--gold-glow);">
+                <i class="fa-solid fa-floppy-disk"></i> 💾 SALVA MODIFICHE COMANDA
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      // 2. NORMAL BOOKING CARD DISPLAY
       const isPending = (b.status === 'in_attesa');
       const isConfirmed = (b.status === 'confermato');
       const isCompleted = (b.status === 'completato');
@@ -377,7 +529,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isCancelled) statusBadge = '<span class="status-pill pill-red"><i class="fa-solid fa-ban"></i> Annullato</span>';
 
       const isDelivery = (b.orderType === 'domicilio');
-      const cleanPhone = (b.customerPhone || '').replace(/\D/g, '');
       const fidDisc = Number(b.fidelityDiscount || 0);
 
       return `
@@ -450,34 +601,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
           <!-- Actions Grid with Modifica Comanda -->
           <div class="bkg-actions-grid">
-            <button type="button" class="btn-adm-edit-comanda" onclick="window.adminOpenEditBooking('${b.id || b.code}')" style="grid-column:1 / -1; background:rgba(212,175,55,0.18); border:1px solid var(--gold-primary); color:var(--gold-light); font-weight:800; padding:8px 12px; border-radius:6px; cursor:pointer;">
+            <button type="button" class="btn-adm-edit-comanda" onclick="window.adminOpenEditBooking('${bId}')" style="grid-column:1 / -1; background:rgba(212,175,55,0.18); border:1px solid var(--gold-primary); color:var(--gold-light); font-weight:800; padding:8px 12px; border-radius:6px; cursor:pointer;">
               <i class="fa-solid fa-pen-to-square text-gold"></i> Modifica Comanda & Sconto Fedeltà
             </button>
 
-            <button type="button" class="btn-adm-wa" onclick="window.adminContactClientWA('${b.id || b.code}')" title="Invia riepilogo con sconto e consegna su WhatsApp">
+            <button type="button" class="btn-adm-wa" onclick="window.adminContactClientWA('${bId}')" title="Invia riepilogo con sconto e consegna su WhatsApp">
               <i class="fa-brands fa-whatsapp"></i> WhatsApp
             </button>
             
-            <button type="button" class="btn-adm-delete-bkg" onclick="window.adminDeleteBooking('${b.id || b.code}', '${b.code}', '${escapeHtml(b.customerName)}')" title="Elimina definitivamente questa comanda">
+            <button type="button" class="btn-adm-delete-bkg" onclick="window.adminDeleteBooking('${bId}', '${b.code}', '${escapeHtml(b.customerName)}')" title="Elimina definitivamente questa comanda">
               <i class="fa-solid fa-trash-can"></i> Elimina Comanda
             </button>
 
             ${isPending ? `
-              <button type="button" class="btn-adm-confirm" onclick="window.adminUpdateBookingStatus('${b.id || b.code}', 'confermato')">
+              <button type="button" class="btn-adm-confirm" onclick="window.adminUpdateBookingStatus('${bId}', 'confermato')">
                 <i class="fa-solid fa-check"></i> Conferma
               </button>
             ` : !isCompleted ? `
-              <button type="button" class="btn-adm-complete" onclick="window.adminUpdateBookingStatus('${b.id || b.code}', 'completato')">
+              <button type="button" class="btn-adm-complete" onclick="window.adminUpdateBookingStatus('${bId}', 'completato')">
                 <i class="fa-solid fa-circle-check"></i> Segna Ritirato
               </button>
             ` : `
-              <button type="button" class="btn-adm-reopen" onclick="window.adminUpdateBookingStatus('${b.id || b.code}', 'in_attesa')">
+              <button type="button" class="btn-adm-reopen" onclick="window.adminUpdateBookingStatus('${bId}', 'in_attesa')">
                 <i class="fa-solid fa-rotate-left"></i> Riapri
               </button>
             `}
 
             ${!isCancelled ? `
-              <button type="button" class="btn-adm-cancel" onclick="window.adminUpdateBookingStatus('${b.id || b.code}', 'annullato')" title="Annulla ordine">
+              <button type="button" class="btn-adm-cancel" onclick="window.adminUpdateBookingStatus('${bId}', 'annullato')" title="Annulla ordine">
                 <i class="fa-solid fa-xmark"></i>
               </button>
             ` : ''}
@@ -624,266 +775,149 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {}
   };
 
-  // ---------------- MODIFICA COMANDA & SCONTO CARTA FEDELTÀ ----------------
+  // ---------------- MODIFICA COMANDA & SCONTO CARTA FEDELTÀ (DIRETTA NEL RIQUADRO) ----------------
 
   window.adminOpenEditBooking = function(idOrCode) {
-    try {
-      const b = allBookings.find(it => String(it.id) === String(idOrCode) || String(it.code) === String(idOrCode) || (it._id && String(it._id) === String(idOrCode)));
-      if (!b) {
-        console.warn('Comanda non trovata:', idOrCode);
-        return;
+    const b = allBookings.find(it => String(it.id) === String(idOrCode) || String(it.code) === String(idOrCode) || (it._id && String(it._id) === String(idOrCode)));
+    if (!b) return;
+
+    inlineEditingBookingId = b.id || b.code;
+    inlineTempItems = Array.isArray(b.items) ? JSON.parse(JSON.stringify(b.items)) : [];
+    inlineTempHasFidelity = Boolean(b.hasFidelityCard || (b.fidelityDiscount && Number(b.fidelityDiscount) > 0));
+    inlineTempFidDiscount = Number(b.fidelityDiscount || 2.00);
+    inlineTempOrderType = b.orderType || 'ritiro';
+
+    renderBookings();
+    
+    setTimeout(() => {
+      const el = document.getElementById('inlineEditCustName');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
+    }, 50);
+  };
 
-      currentEditingBooking = JSON.parse(JSON.stringify(b));
-      tempEditItems = Array.isArray(b.items) ? JSON.parse(JSON.stringify(b.items)) : [];
+  window.adminCancelInlineEditBooking = function() {
+    inlineEditingBookingId = null;
+    inlineTempItems = [];
+    renderBookings();
+  };
 
-      const idInput = document.getElementById('editBookingId');
-      const codeSpan = document.getElementById('editBookingCode');
-      const custName = document.getElementById('editCustName');
-      const custPhone = document.getElementById('editCustPhone');
-      const dateInput = document.getElementById('editPickupDate');
-      const timeInput = document.getElementById('editPickupTime');
-      const statusSelect = document.getElementById('editStatus');
-      const orderTypeSelect = document.getElementById('editOrderType');
-      const delivAddress = document.getElementById('editDeliveryAddress');
-      const delivGroup = document.getElementById('editDeliveryAddressGroup');
-      const notesInput = document.getElementById('editNotes');
-      const adminNotesInput = document.getElementById('editAdminNotes');
-      const hasFidelityCardCheck = document.getElementById('editHasFidelityCard');
-      const fidelityDiscInput = document.getElementById('editFidelityDiscount');
-      const fidelityDiscGroup = document.getElementById('fidelityDiscountInputGroup');
-
-      if (idInput) idInput.value = b.id || b.code || '';
-      if (codeSpan) codeSpan.textContent = `(${b.code || ''})`;
-      if (custName) custName.value = b.customerName || '';
-      if (custPhone) custPhone.value = b.customerPhone || '';
-      if (dateInput) dateInput.value = b.pickupDate || '';
-      if (timeInput) timeInput.value = b.pickupTime || '';
-      if (statusSelect) statusSelect.value = b.status || 'in_attesa';
-      
-      const isDeliv = (b.orderType === 'domicilio');
-      if (orderTypeSelect) orderTypeSelect.value = isDeliv ? 'domicilio' : 'ritiro';
-      if (delivGroup) delivGroup.style.display = isDeliv ? 'block' : 'none';
-      if (delivAddress) delivAddress.value = b.deliveryAddress || '';
-
-      if (notesInput) notesInput.value = b.notes || '';
-      if (adminNotesInput) adminNotesInput.value = b.adminNotes || '';
-
-      // Fidelity Card and Discount
-      const hasFid = Boolean(b.hasFidelityCard || (b.fidelityDiscount && Number(b.fidelityDiscount) > 0));
-      if (hasFidelityCardCheck) hasFidelityCardCheck.checked = hasFid;
-      if (fidelityDiscGroup) fidelityDiscGroup.style.display = hasFid ? 'block' : 'none';
-      if (fidelityDiscInput) fidelityDiscInput.value = Number(b.fidelityDiscount || 2.00).toFixed(2);
-
-      // Populate Products Dropdown
-      const addSelect = document.getElementById('editAddProductSelect');
-      if (addSelect) {
-        let optHtml = '<option value="">-- Aggiungi un piatto dal menu --</option>';
-        allProducts.forEach(p => {
-          optHtml += `<option value="${p.id}">${escapeHtml(p.name)} (${Number(p.price).toFixed(2)} €)</option>`;
-        });
-        addSelect.innerHTML = optHtml;
-      }
-
-      renderEditComandaItemsList();
-      window.adminRecalculateEditTotal();
-
-      const modal = document.getElementById('editBookingModal');
-      if (modal) {
-        modal.classList.add('active');
-        modal.style.setProperty('display', 'flex', 'important');
-        modal.style.setProperty('z-index', '999999', 'important');
-      }
-    } catch (err) {
-      console.error('Error in adminOpenEditBooking:', err);
+  window.adminInlineChangeQty = function(idx, delta) {
+    if (!inlineTempItems[idx]) return;
+    inlineTempItems[idx].quantity = (inlineTempItems[idx].quantity || 1) + delta;
+    if (inlineTempItems[idx].quantity <= 0) {
+      inlineTempItems.splice(idx, 1);
     }
+    renderBookings();
   };
 
-  window.closeEditBookingModal = function() {
-    const modal = document.getElementById('editBookingModal');
-    if (modal) {
-      modal.classList.remove('active');
-      modal.style.display = 'none';
-    }
-    currentEditingBooking = null;
-    tempEditItems = [];
+  window.adminInlineRemoveItem = function(idx) {
+    if (!inlineTempItems[idx]) return;
+    inlineTempItems.splice(idx, 1);
+    renderBookings();
   };
 
-  window.adminToggleEditDelivery = function(val) {
-    const delivGroup = document.getElementById('editDeliveryAddressGroup');
-    if (delivGroup) delivGroup.style.display = (val === 'domicilio') ? 'block' : 'none';
-    window.adminRecalculateEditTotal();
-  };
-
-  function renderEditComandaItemsList() {
-    const container = document.getElementById('editComandaItemsList');
-    if (!container) return;
-
-    if (tempEditItems.length === 0) {
-      container.innerHTML = `
-        <div style="text-align:center; padding:12px; color:var(--color-warning); font-size:0.82rem;">
-          <i class="fa-solid fa-triangle-exclamation"></i> Nessun piatto nella comanda. Aggiungine uno dal menu sottostante.
-        </div>
-      `;
-      return;
-    }
-
-    container.innerHTML = tempEditItems.map((it, idx) => {
-      const q = it.quantity || 1;
-      const p = Number(it.price || 0);
-      const sub = (q * p).toFixed(2).replace('.', ',');
-
-      return `
-        <div class="edit-item-row" style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-main); border:1px solid var(--border-color-light); border-radius:6px; padding:6px 10px;">
-          <div style="flex:1;">
-            <strong style="font-size:0.85rem; color:#fff;">${escapeHtml(it.name)}</strong>
-            <div style="font-size:0.75rem; color:var(--text-muted);">${p.toFixed(2).replace('.', ',')} € cad.</div>
-          </div>
-          
-          <div style="display:flex; align-items:center; gap:6px;">
-            <button type="button" class="btn-qty-mini" onclick="window.adminChangeEditItemQty(${idx}, -1)" style="width:26px; height:26px; background:var(--bg-surface); border:1px solid var(--border-color); color:#fff; border-radius:4px; font-weight:800; cursor:pointer;">-</button>
-            <span style="font-size:0.9rem; font-weight:800; color:var(--gold-light); min-width:20px; text-align:center;">${q}</span>
-            <button type="button" class="btn-qty-mini" onclick="window.adminChangeEditItemQty(${idx}, 1)" style="width:26px; height:26px; background:var(--bg-surface); border:1px solid var(--border-color); color:#fff; border-radius:4px; font-weight:800; cursor:pointer;">+</button>
-          </div>
-
-          <div style="font-weight:800; color:var(--gold-light); font-size:0.88rem; min-width:55px; text-align:right; margin:0 8px;">
-            ${sub} €
-          </div>
-
-          <button type="button" onclick="window.adminRemoveEditItem(${idx})" title="Rimuovi piatto" style="background:rgba(231,76,60,0.15); border:1px solid rgba(231,76,60,0.3); color:#e74c3c; width:26px; height:26px; border-radius:4px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
-            <i class="fa-solid fa-trash-can" style="font-size:0.75rem;"></i>
-          </button>
-        </div>
-      `;
-    }).join('');
-  }
-
-  window.adminChangeEditItemQty = function(index, delta) {
-    if (!tempEditItems[index]) return;
-    tempEditItems[index].quantity = (tempEditItems[index].quantity || 1) + delta;
-    if (tempEditItems[index].quantity <= 0) {
-      tempEditItems.splice(index, 1);
-    }
-    renderEditComandaItemsList();
-    window.adminRecalculateEditTotal();
-  };
-
-  window.adminRemoveEditItem = function(index) {
-    if (!tempEditItems[index]) return;
-    tempEditItems.splice(index, 1);
-    renderEditComandaItemsList();
-    window.adminRecalculateEditTotal();
-  };
-
-  window.adminAddItemToComanda = function() {
-    const select = document.getElementById('editAddProductSelect');
+  window.adminInlineAddProduct = function() {
+    const select = document.getElementById('inlineAddProductSelect');
     if (!select || !select.value) return;
 
-    const prodId = select.value;
-    const prod = allProducts.find(p => p.id === prodId);
+    const prod = allProducts.find(p => p.id === select.value);
     if (!prod) return;
 
-    const existingIdx = tempEditItems.findIndex(it => it.id === prod.id || it.name === prod.name);
+    const existingIdx = inlineTempItems.findIndex(it => it.id === prod.id || it.name === prod.name);
     if (existingIdx !== -1) {
-      tempEditItems[existingIdx].quantity = (tempEditItems[existingIdx].quantity || 1) + 1;
+      inlineTempItems[existingIdx].quantity = (inlineTempItems[existingIdx].quantity || 1) + 1;
     } else {
-      tempEditItems.push({
+      inlineTempItems.push({
         id: prod.id,
         name: prod.name,
-        category: prod.category,
+        category: prod.category || 'pollo',
         price: Number(prod.price),
         quantity: 1,
         subtotal: Number(prod.price)
       });
     }
 
-    select.value = '';
-    renderEditComandaItemsList();
-    window.adminRecalculateEditTotal();
+    renderBookings();
     showAdminToast(`Aggiunto alla comanda: ${prod.name}`);
   };
 
-  window.adminToggleFidelityDiscount = function(isChecked) {
-    const group = document.getElementById('fidelityDiscountInputGroup');
-    if (group) group.style.display = isChecked ? 'block' : 'none';
-    const input = document.getElementById('editFidelityDiscount');
-    if (input && isChecked && (!input.value || parseFloat(input.value) <= 0)) {
-      input.value = '2.00';
-    }
-    window.adminRecalculateEditTotal();
+  window.adminInlineToggleDelivery = function(val) {
+    inlineTempOrderType = val;
+    const wrapper = document.getElementById('inlineEditAddressWrapper');
+    if (wrapper) wrapper.style.display = (val === 'domicilio') ? 'block' : 'none';
+    window.adminInlineRecalculateTotal();
   };
 
-  window.adminSetQuickDiscount = function(val) {
-    const check = document.getElementById('editHasFidelityCard');
-    if (check) {
-      check.checked = (val > 0);
-      const group = document.getElementById('fidelityDiscountInputGroup');
-      if (group) group.style.display = (val > 0) ? 'block' : 'none';
+  window.adminInlineToggleFidelity = function(checked) {
+    inlineTempHasFidelity = checked;
+    const group = document.getElementById('inlineFidelityGroup');
+    if (group) group.style.display = checked ? 'block' : 'none';
+    if (checked && inlineTempFidDiscount <= 0) {
+      inlineTempFidDiscount = 2.00;
+      const input = document.getElementById('inlineEditFidDiscount');
+      if (input) input.value = '2.00';
     }
-    const input = document.getElementById('editFidelityDiscount');
+    window.adminInlineRecalculateTotal();
+  };
+
+  window.adminInlineSetQuickDiscount = function(val) {
+    inlineTempFidDiscount = Number(val);
+    inlineTempHasFidelity = (val > 0);
+    const check = document.getElementById('inlineEditHasFidelity');
+    if (check) check.checked = inlineTempHasFidelity;
+    const group = document.getElementById('inlineFidelityGroup');
+    if (group) group.style.display = inlineTempHasFidelity ? 'block' : 'none';
+    const input = document.getElementById('inlineEditFidDiscount');
     if (input) input.value = Number(val).toFixed(2);
-    window.adminRecalculateEditTotal();
+    window.adminInlineRecalculateTotal();
   };
 
-  window.adminRecalculateEditTotal = function() {
+  window.adminInlineRecalculateTotal = function() {
     let itemsSub = 0;
-    tempEditItems.forEach(it => {
-      const q = it.quantity || 1;
-      const p = Number(it.price || 0);
-      itemsSub += (q * p);
+    inlineTempItems.forEach(it => {
+      itemsSub += (it.quantity || 1) * Number(it.price || 0);
     });
 
-    const orderTypeSelect = document.getElementById('editOrderType');
-    const isDelivery = orderTypeSelect ? (orderTypeSelect.value === 'domicilio') : false;
-    const delivFee = isDelivery ? 2.00 : 0.00;
+    const isDeliv = (inlineTempOrderType === 'domicilio');
+    const delivFee = isDeliv ? 2.00 : 0.00;
 
-    const hasFidCheck = document.getElementById('editHasFidelityCard');
-    const isFidActive = Boolean(hasFidCheck && hasFidCheck.checked);
-    const fidDiscInput = document.getElementById('editFidelityDiscount');
-    const fidDisc = isFidActive ? Math.max(0, parseFloat(fidDiscInput ? fidDiscInput.value : 0) || 0) : 0;
+    const inputDisc = document.getElementById('inlineEditFidDiscount');
+    if (inputDisc) inlineTempFidDiscount = parseFloat(inputDisc.value) || 0;
 
-    const finalTotal = Math.max(0, itemsSub + delivFee - fidDisc);
+    const fidDisc = inlineTempHasFidelity ? Math.max(0, inlineTempFidDiscount) : 0;
+    const finalTot = Math.max(0, itemsSub + delivFee - fidDisc);
 
-    const subSpan = document.getElementById('editPreviewItemsSubtotal');
-    const delivLine = document.getElementById('editPreviewDeliveryFeeLine');
-    const fidLine = document.getElementById('editPreviewFidelityLine');
-    const fidDiscSpan = document.getElementById('editPreviewFidelityDiscount');
-    const finalSpan = document.getElementById('editPreviewFinalTotal');
+    const subEl = document.getElementById('inlineItemsSubtotalVal');
+    if (subEl) subEl.textContent = itemsSub.toFixed(2).replace('.', ',') + ' €';
 
-    if (subSpan) subSpan.textContent = itemsSub.toFixed(2).replace('.', ',') + ' €';
-    if (delivLine) delivLine.style.display = isDelivery ? 'flex' : 'none';
-    
-    if (fidLine) fidLine.style.display = (isFidActive && fidDisc > 0) ? 'flex' : 'none';
-    if (fidDiscSpan) fidDiscSpan.textContent = `- ${fidDisc.toFixed(2).replace('.', ',')} €`;
-
-    if (finalSpan) finalSpan.textContent = finalTotal.toFixed(2).replace('.', ',') + ' €';
+    const grandEl = document.getElementById('inlineGrandTotalVal');
+    if (grandEl) grandEl.textContent = finalTot.toFixed(2).replace('.', ',') + ' €';
   };
 
-  window.handleSaveEditBooking = async function(e) {
-    if (e && e.preventDefault) e.preventDefault();
-
-    const bookingId = document.getElementById('editBookingId').value;
-    if (!bookingId) return;
-
-    if (tempEditItems.length === 0) {
-      alert('La comanda deve contenere almeno un piatto.');
+  window.adminSaveInlineEditBooking = async function(idOrCode) {
+    if (inlineTempItems.length === 0) {
+      alert('⚠️ La comanda deve contenere almeno un piatto.');
       return;
     }
 
-    const name = document.getElementById('editCustName').value.trim();
-    const phone = document.getElementById('editCustPhone').value.trim();
-    const date = document.getElementById('editPickupDate').value;
-    const time = document.getElementById('editPickupTime').value.trim();
-    const status = document.getElementById('editStatus').value;
-    const orderType = document.getElementById('editOrderType').value;
-    const delivAddress = document.getElementById('editDeliveryAddress').value.trim();
-    const notes = document.getElementById('editNotes').value.trim();
-    const adminNotes = document.getElementById('editAdminNotes').value.trim();
-    const hasFidelity = document.getElementById('editHasFidelityCard').checked;
-    const fidelityDisc = hasFidelity ? Math.max(0, parseFloat(document.getElementById('editFidelityDiscount').value) || 0) : 0;
+    const b = allBookings.find(it => String(it.id) === String(idOrCode) || String(it.code) === String(idOrCode));
+    if (!b) return;
+
+    const custName = document.getElementById('inlineEditCustName') ? document.getElementById('inlineEditCustName').value.trim() : b.customerName;
+    const custPhone = document.getElementById('inlineEditCustPhone') ? document.getElementById('inlineEditCustPhone').value.trim() : b.customerPhone;
+    const pickupDate = document.getElementById('inlineEditPickupDate') ? document.getElementById('inlineEditPickupDate').value : b.pickupDate;
+    const pickupTime = document.getElementById('inlineEditPickupTime') ? document.getElementById('inlineEditPickupTime').value.trim() : b.pickupTime;
+    const orderType = inlineTempOrderType;
+    const address = document.getElementById('inlineEditAddress') ? document.getElementById('inlineEditAddress').value.trim() : (b.deliveryAddress || '');
+    const notes = document.getElementById('inlineEditNotes') ? document.getElementById('inlineEditNotes').value.trim() : (b.notes || '');
+
+    const inputDisc = document.getElementById('inlineEditFidDiscount');
+    if (inputDisc) inlineTempFidDiscount = parseFloat(inputDisc.value) || 0;
 
     let itemsSub = 0;
-    const validated = tempEditItems.map(it => {
+    const validatedItems = inlineTempItems.map(it => {
       const q = parseInt(it.quantity, 10) || 1;
       const p = Number(it.price || 0);
       const sub = Number((q * p).toFixed(2));
@@ -891,36 +925,35 @@ document.addEventListener('DOMContentLoaded', () => {
       return {
         id: it.id,
         name: it.name,
-        category: it.category || 'altro',
+        category: it.category || 'pollo',
         price: p,
         quantity: q,
         subtotal: sub
       };
     });
 
-    const delivFee = (orderType === 'domicilio') ? 2.00 : 0.00;
-    const totalAmount = Math.max(0, Number((itemsSub + delivFee - fidelityDisc).toFixed(2)));
+    const isDeliv = (orderType === 'domicilio');
+    const delivFee = isDeliv ? 2.00 : 0.00;
+    const fidDisc = inlineTempHasFidelity ? Math.max(0, inlineTempFidDiscount) : 0;
+    const totalAmount = Math.max(0, Number((itemsSub + delivFee - fidDisc).toFixed(2)));
 
     const payload = {
-      customerName: name,
-      customerPhone: phone,
-      pickupDate: date,
-      pickupTime: time,
-      status: status,
+      customerName: custName,
+      customerPhone: custPhone,
+      pickupDate: pickupDate,
+      pickupTime: pickupTime,
       orderType: orderType,
-      deliveryAddress: (orderType === 'domicilio') ? delivAddress : '',
+      deliveryAddress: isDeliv ? address : '',
       deliveryFee: delivFee,
-      hasFidelityCard: hasFidelity,
-      fidelityDiscount: fidelityDisc,
-      items: validated,
+      hasFidelityCard: inlineTempHasFidelity,
+      fidelityDiscount: fidDisc,
+      items: validatedItems,
       itemsSubtotal: Number(itemsSub.toFixed(2)),
       notes: notes,
-      adminNotes: adminNotes,
       totalAmount: totalAmount
     };
 
-    // Update local state
-    const idx = allBookings.findIndex(b => b.id === bookingId || b.code === bookingId);
+    const idx = allBookings.findIndex(it => String(it.id) === String(idOrCode) || String(it.code) === String(idOrCode));
     if (idx !== -1) {
       allBookings[idx] = {
         ...allBookings[idx],
@@ -932,24 +965,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const store = JSON.parse(localStorage.getItem('el_gallero_data') || '{}');
         store.bookings = allBookings;
         localStorage.setItem('el_gallero_data', JSON.stringify(store));
-      } catch (err) {}
+      } catch (e) {}
     }
 
-    // Call server PATCH
     try {
-      await fetch(`/api/admin/bookings/${encodeURIComponent(bookingId)}`, {
+      await fetch(`/api/admin/bookings/${encodeURIComponent(b.id || b.code)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin },
         body: JSON.stringify(payload)
       });
-    } catch (apiErr) {}
+    } catch (err) {}
 
-    window.closeEditBookingModal();
+    inlineEditingBookingId = null;
+    inlineTempItems = [];
+
     computeCustomersFromBookings();
     renderBookings();
     renderCustomersTable();
     updateStatsUI();
-    showAdminToast('✅ Comanda e Sconto Carta Fedeltà salvati con successo!');
+    showAdminToast(`✅ Comanda ${b.code} e Sconto Fedeltà (${fidDisc.toFixed(2)} €) salvati!`);
   };
 
   // ---------------- RUBRICA CLIENTI ----------------
