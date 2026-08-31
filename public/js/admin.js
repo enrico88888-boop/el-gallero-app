@@ -1371,34 +1371,71 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
   };
 
-  // Add / Edit Product Modal
+    // Add / Edit Product Modal
   window.openAddProductModal = function() {
     const form = document.getElementById('productForm');
     if (form) form.reset();
-    document.getElementById('prodFormId').value = '';
-    document.getElementById('productModalTitle').innerHTML = '<i class="fa-solid fa-plus text-gold"></i> Aggiungi Nuovo Piatto';
-    if (productModal) productModal.classList.add('active');
+    
+    const idInput = document.getElementById('prodFormId');
+    if (idInput) idInput.value = '';
+    
+    const title = document.getElementById('productModalTitle');
+    if (title) title.innerHTML = '<i class="fa-solid fa-plus text-gold"></i> Aggiungi Nuovo Piatto';
+    
+    const stockInput = document.getElementById('prodStock');
+    if (stockInput) stockInput.value = '15';
+    
+    const unlimInput = document.getElementById('prodUnlimited');
+    if (unlimInput) unlimInput.checked = false;
+    
+    const availInput = document.getElementById('prodAvailable');
+    if (availInput) availInput.checked = true;
+
+    const modal = document.getElementById('productModal');
+    if (modal) {
+      modal.classList.add('active');
+      modal.style.display = 'flex';
+    }
   };
 
   window.adminEditProduct = function(productId) {
     const prod = allProducts.find(p => p.id === productId);
     if (!prod) return;
 
-    document.getElementById('prodFormId').value = prod.id;
-    document.getElementById('prodName').value = prod.name || '';
-    document.getElementById('prodCategory').value = prod.category || 'pollo';
-    document.getElementById('prodPrice').value = Number(prod.price || 0).toFixed(2);
-    document.getElementById('prodDesc').value = prod.description || '';
-    document.getElementById('prodStock').value = prod.stock !== undefined ? prod.stock : 10;
-    document.getElementById('prodUnlimited').checked = Boolean(prod.unlimited);
-    document.getElementById('prodAvailable').checked = (prod.available !== false);
+    const idInput = document.getElementById('prodFormId');
+    const nameInput = document.getElementById('prodName');
+    const catInput = document.getElementById('prodCategory');
+    const priceInput = document.getElementById('prodPrice');
+    const descInput = document.getElementById('prodDesc');
+    const stockInput = document.getElementById('prodStock');
+    const unlimInput = document.getElementById('prodUnlimited');
+    const availInput = document.getElementById('prodAvailable');
+    const title = document.getElementById('productModalTitle');
 
-    document.getElementById('productModalTitle').innerHTML = `<i class="fa-solid fa-pen-to-square text-gold"></i> Modifica "${escapeHtml(prod.name)}"`;
-    if (productModal) productModal.classList.add('active');
+    if (idInput) idInput.value = prod.id;
+    if (nameInput) nameInput.value = prod.name || '';
+    if (catInput) catInput.value = prod.category || 'pollo';
+    if (priceInput) priceInput.value = Number(prod.price || 0).toFixed(2);
+    if (descInput) descInput.value = prod.description || '';
+    if (stockInput) stockInput.value = prod.stock !== undefined ? prod.stock : 10;
+    if (unlimInput) unlimInput.checked = Boolean(prod.unlimited);
+    if (availInput) availInput.checked = (prod.available !== false);
+
+    if (title) title.innerHTML = `<i class="fa-solid fa-pen-to-square text-gold"></i> Modifica "${escapeHtml(prod.name)}"`;
+
+    const modal = document.getElementById('productModal');
+    if (modal) {
+      modal.classList.add('active');
+      modal.style.display = 'flex';
+    }
   };
 
   window.closeProductModal = function() {
-    if (productModal) productModal.classList.remove('active');
+    const modal = document.getElementById('productModal');
+    if (modal) {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+    }
   };
 
   window.handleSaveProduct = async function(e) {
@@ -1414,7 +1451,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const available = document.getElementById('prodAvailable').checked;
 
     if (!name || price <= 0) {
-      alert('Nome e Prezzo valido sono obbligatori.');
+      alert('⚠️ Nome del piatto e Prezzo valido sono obbligatori.');
       return;
     }
 
@@ -1430,23 +1467,23 @@ document.addEventListener('DOMContentLoaded', () => {
         prod.available = available;
       }
       try {
-        await fetch(`/api/admin/products/${id}`, {
+        await fetch(`/api/admin/products/${encodeURIComponent(id)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin },
           body: JSON.stringify({ name, category, price, description: desc, stock, unlimited, available })
         });
       } catch (err) {}
-      showAdminToast(`Piatto "${name}" aggiornato!`);
+      showAdminToast(`✅ Piatto "${name}" aggiornato con successo!`);
     } else {
       const newProd = {
         id: 'prod_' + Date.now(),
-        name,
-        category,
-        price,
+        name: name,
+        category: category,
+        price: price,
         description: desc,
-        stock,
-        unlimited,
-        available
+        stock: stock,
+        unlimited: unlimited,
+        available: available
       };
       allProducts.push(newProd);
       try {
@@ -1456,12 +1493,13 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify(newProd)
         });
       } catch (err) {}
-      showAdminToast(`Nuovo piatto "${name}" aggiunto al menu!`);
+      showAdminToast(`✅ Nuovo piatto "${name}" aggiunto al menu!`);
     }
 
     saveAndBroadcastMenu();
     renderMenuEditor();
     window.closeProductModal();
+  };
   };
 
   function saveAndBroadcastMenu() {
