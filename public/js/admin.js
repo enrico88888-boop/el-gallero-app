@@ -1615,6 +1615,22 @@ document.addEventListener('DOMContentLoaded', () => {
   function showAdminToast(msg) {
     if (typeof window.showToast === 'function') {
       window.showToast(msg);
+      return;
     }
+    let container = document.getElementById('adminToastContainer') || document.getElementById('toastContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'adminToastContainer';
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
+    const t = document.createElement('div');
+    t.className = 'app-toast active';
+    t.innerHTML = `<i class="fa-solid fa-circle-check text-gold"></i> <span>${msg}</span>`;
+    container.appendChild(t);
+    setTimeout(() => {
+      t.style.opacity = '0';
+      setTimeout(() => t.remove(), 300);
+    }, 3000);
   }
 });
