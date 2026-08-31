@@ -684,14 +684,19 @@ document.addEventListener('DOMContentLoaded', () => {
     renderEditComandaItemsList();
     window.adminRecalculateEditTotal();
 
-    if (editBookingModal) {
-      editBookingModal.classList.add('active');
+    const modal = document.getElementById('editBookingModal');
+    if (modal) {
+      modal.classList.add('active');
+      modal.style.display = 'flex';
+      modal.style.zIndex = '999999';
     }
   };
 
   window.closeEditBookingModal = function() {
-    if (editBookingModal) {
-      editBookingModal.classList.remove('active');
+    const modal = document.getElementById('editBookingModal');
+    if (modal) {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
     }
     currentEditingBooking = null;
     tempEditItems = [];
