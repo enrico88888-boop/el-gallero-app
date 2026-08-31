@@ -1238,15 +1238,124 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---------------- SCORTE & MENU MANAGEMENT ----------------
 
+  // Inline creation & editing state
+  let isCreatingNewProduct = false;
+  let editingProductId = null;
+
   function renderMenuEditor() {
     if (!menuEditorGrid) return;
 
-    if (allProducts.length === 0) {
-      menuEditorGrid.innerHTML = '<div class="empty-products-msg"><p>Nessun prodotto configurato.</p></div>';
+    let html = '';
+
+    // 1. If currently creating a new product, render the Creation Card on top
+    if (isCreatingNewProduct) {
+      html += `
+        <div class="inline-new-prod-card" style="grid-column: 1 / -1; background:#1e1815; border:2px solid var(--gold-primary); border-radius:12px; padding:18px; margin-bottom:16px; box-shadow:0 8px 30px rgba(0,0,0,0.8), 0 0 20px var(--gold-glow);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid rgba(212,175,55,0.3); padding-bottom:8px;">
+            <h3 style="margin:0; font-size:1.15rem; color:var(--gold-light); display:flex; align-items:center; gap:8px;">
+              <i class="fa-solid fa-plus-circle text-gold"></i> Crea & Aggiungi Nuovo Piatto nel Menu
+            </h3>
+            <button type="button" onclick="window.adminCancelInlineNewProduct()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:12px;">
+            <div>
+              <label style="font-size:0.8rem; font-weight:700; color:#fff; display:block; margin-bottom:4px;">Nome Piatto / Prodotto *</label>
+              <input type="text" id="inlineNewName" placeholder="Es. Pollo al Forno Rustico" style="width:100%; padding:10px 12px; background:#120e0d; border:1px solid var(--border-color); border-radius:6px; color:#fff; font-size:0.95rem; outline:none;" required>
+            </div>
+            <div>
+              <label style="font-size:0.8rem; font-weight:700; color:#fff; display:block; margin-bottom:4px;">Categoria *</label>
+              <select id="inlineNewCategory" style="width:100%; padding:10px 12px; background:#120e0d; border:1px solid var(--border-color); border-radius:6px; color:#fff; font-size:0.95rem; outline:none;">
+                <option value="pollo">🍗 Pollo</option>
+                <option value="sfizio">🍟 Sfizio / Contorno</option>
+                <option value="bibite">🥤 Bibite</option>
+                <option value="box">📦 Box Offerta</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:0.8rem; font-weight:700; color:#fff; display:block; margin-bottom:4px;">Prezzo (€) *</label>
+              <input type="number" step="0.10" id="inlineNewPrice" placeholder="Es. 8.50" style="width:100%; padding:10px 12px; background:#120e0d; border:1px solid var(--border-color); border-radius:6px; color:#fff; font-size:0.95rem; outline:none;" required>
+            </div>
+            <div>
+              <label style="font-size:0.8rem; font-weight:700; color:#fff; display:block; margin-bottom:4px;">Quantità Scorte Iniziali (Pezzi) *</label>
+              <input type="number" id="inlineNewStock" value="20" min="0" style="width:100%; padding:10px 12px; background:#120e0d; border:1px solid var(--border-color); border-radius:6px; color:#fff; font-size:0.95rem; outline:none;" required>
+            </div>
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <label style="font-size:0.8rem; font-weight:700; color:#fff; display:block; margin-bottom:4px;">Descrizione / Ingredienti del Piatto</label>
+            <textarea id="inlineNewDesc" rows="2" placeholder="Es. Cotto allo spiedo a legna con erbe aromatiche..." style="width:100%; padding:10px 12px; background:#120e0d; border:1px solid var(--border-color); border-radius:6px; color:#fff; font-size:0.9rem; outline:none; resize:vertical;"></textarea>
+          </div>
+
+          <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button type="button" onclick="window.adminCancelInlineNewProduct()" style="padding:10px 18px; background:transparent; border:1px solid var(--border-color); color:var(--text-secondary); border-radius:6px; font-weight:700; cursor:pointer;">
+              <i class="fa-solid fa-xmark"></i> Annulla
+            </button>
+            <button type="button" onclick="window.adminSaveInlineNewProduct()" style="padding:10px 22px; background:var(--gold-gradient); border:none; color:#120e0d; border-radius:6px; font-weight:800; cursor:pointer; font-size:0.95rem; box-shadow:0 0 12px var(--gold-glow);">
+              <i class="fa-solid fa-check"></i> ✅ Salva & Aggiungi al Menu
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    if (allProducts.length === 0 && !isCreatingNewProduct) {
+      menuEditorGrid.innerHTML = '<div class="empty-products-msg"><p>Nessun prodotto configurato. Clicca su "+ Aggiungi Nuovo Piatto" per iniziare.</p></div>';
       return;
     }
 
-    menuEditorGrid.innerHTML = allProducts.map(p => {
+    html += allProducts.map(p => {
+      // 2. If this product is being edited inline
+      if (editingProductId === p.id) {
+        return `
+          <div class="menu-editor-card" style="background:#221b18; border:2px solid var(--gold-primary); box-shadow:0 0 20px rgba(212,175,55,0.35); padding:16px;">
+            <div style="font-size:0.95rem; font-weight:800; color:var(--gold-light); margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+              <i class="fa-solid fa-pen-to-square"></i> Modifica: "${escapeHtml(p.name)}"
+            </div>
+            
+            <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;">
+              <div>
+                <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:3px;">Nome Piatto:</label>
+                <input type="text" id="inlineEditName_${p.id}" value="${escapeHtml(p.name)}" style="width:100%; padding:8px 10px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px; color:#fff; font-weight:700;">
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <div>
+                  <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:3px;">Prezzo (€):</label>
+                  <input type="number" step="0.10" id="inlineEditPrice_${p.id}" value="${Number(p.price).toFixed(2)}" style="width:100%; padding:8px 10px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px; color:#fff; font-weight:700;">
+                </div>
+                <div>
+                  <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:3px;">Scorte (Pz):</label>
+                  <input type="number" min="0" id="inlineEditStock_${p.id}" value="${p.stock !== undefined ? p.stock : 10}" style="width:100%; padding:8px 10px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px; color:#fff; font-weight:700;">
+                </div>
+              </div>
+              <div>
+                <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:3px;">Categoria:</label>
+                <select id="inlineEditCat_${p.id}" style="width:100%; padding:8px 10px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px; color:#fff;">
+                  <option value="pollo" ${p.category === 'pollo' ? 'selected' : ''}>🍗 Pollo</option>
+                  <option value="sfizio" ${p.category === 'sfizio' ? 'selected' : ''}>🍟 Sfizio / Contorno</option>
+                  <option value="bibite" ${p.category === 'bibite' ? 'selected' : ''}>🥤 Bibite</option>
+                  <option value="box" ${p.category === 'box' ? 'selected' : ''}>📦 Box</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:3px;">Descrizione:</label>
+                <textarea id="inlineEditDesc_${p.id}" rows="2" style="width:100%; padding:8px 10px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px; color:#fff; font-size:0.85rem; resize:vertical;">${escapeHtml(p.description || '')}</textarea>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:8px; justify-content:flex-end;">
+              <button type="button" onclick="window.adminCancelInlineEditProduct()" style="padding:8px 14px; background:var(--bg-surface); border:1px solid var(--border-color); color:var(--text-secondary); border-radius:4px; font-weight:700; cursor:pointer;">
+                <i class="fa-solid fa-xmark"></i> Annulla
+              </button>
+              <button type="button" onclick="window.adminSaveInlineEditProduct('${p.id}')" style="padding:8px 16px; background:var(--gold-gradient); border:none; color:#120e0d; border-radius:4px; font-weight:800; cursor:pointer; box-shadow:0 0 10px var(--gold-glow);">
+                <i class="fa-solid fa-check"></i> Salva Modifiche
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      // 3. Normal Product Card Display
       const isUnlimited = Boolean(p.unlimited);
       const stock = p.stock !== undefined ? p.stock : 10;
       const isAvailable = isUnlimited ? (p.available !== false) : (stock > 0 && p.available !== false);
@@ -1311,7 +1420,133 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
     }).join('');
+
+    menuEditorGrid.innerHTML = html;
   }
+
+  // --- Inline Product Action Handlers ---
+
+  window.openAddProductModal = function() {
+    isCreatingNewProduct = true;
+    editingProductId = null;
+    renderMenuEditor();
+    setTimeout(() => {
+      const input = document.getElementById('inlineNewName');
+      if (input) {
+        input.focus();
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 50);
+  };
+
+  window.adminCancelInlineNewProduct = function() {
+    isCreatingNewProduct = false;
+    renderMenuEditor();
+  };
+
+  window.adminSaveInlineNewProduct = async function() {
+    const nameInput = document.getElementById('inlineNewName');
+    const catInput = document.getElementById('inlineNewCategory');
+    const priceInput = document.getElementById('inlineNewPrice');
+    const stockInput = document.getElementById('inlineNewStock');
+    const descInput = document.getElementById('inlineNewDesc');
+
+    const name = nameInput ? nameInput.value.trim() : '';
+    const category = catInput ? catInput.value : 'pollo';
+    const price = priceInput ? parseFloat(priceInput.value) : 0;
+    const stock = stockInput ? (parseInt(stockInput.value, 10) || 0) : 15;
+    const desc = descInput ? descInput.value.trim() : '';
+
+    if (!name || isNaN(price) || price <= 0) {
+      alert('⚠️ Inserisci un Nome e un Prezzo valido per il nuovo piatto.');
+      return;
+    }
+
+    const newProd = {
+      id: 'prod_' + Date.now(),
+      name: name,
+      category: category,
+      price: price,
+      description: desc,
+      stock: stock,
+      unlimited: false,
+      available: stock > 0
+    };
+
+    allProducts.push(newProd);
+    isCreatingNewProduct = false;
+    saveAndBroadcastMenu();
+    renderMenuEditor();
+    showAdminToast(`✅ Nuovo piatto "${name}" aggiunto con ${stock} pezzi al menu!`);
+
+    try {
+      await fetch('/api/admin/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin },
+        body: JSON.stringify(newProd)
+      });
+    } catch (err) {}
+  };
+
+  window.adminEditProduct = function(productId) {
+    editingProductId = productId;
+    isCreatingNewProduct = false;
+    renderMenuEditor();
+    setTimeout(() => {
+      const input = document.getElementById(`inlineEditName_${productId}`);
+      if (input) {
+        input.focus();
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 50);
+  };
+
+  window.adminCancelInlineEditProduct = function() {
+    editingProductId = null;
+    renderMenuEditor();
+  };
+
+  window.adminSaveInlineEditProduct = async function(productId) {
+    const prod = allProducts.find(p => p.id === productId);
+    if (!prod) return;
+
+    const nameInput = document.getElementById(`inlineEditName_${productId}`);
+    const priceInput = document.getElementById(`inlineEditPrice_${productId}`);
+    const stockInput = document.getElementById(`inlineEditStock_${productId}`);
+    const catInput = document.getElementById(`inlineEditCat_${productId}`);
+    const descInput = document.getElementById(`inlineEditDesc_${productId}`);
+
+    const name = nameInput ? nameInput.value.trim() : prod.name;
+    const price = priceInput ? parseFloat(priceInput.value) : prod.price;
+    const stock = stockInput ? (parseInt(stockInput.value, 10) || 0) : prod.stock;
+    const category = catInput ? catInput.value : prod.category;
+    const desc = descInput ? descInput.value.trim() : prod.description;
+
+    if (!name || isNaN(price) || price <= 0) {
+      alert('⚠️ Inserisci un Nome e un Prezzo valido.');
+      return;
+    }
+
+    prod.name = name;
+    prod.price = price;
+    prod.stock = stock;
+    prod.category = category;
+    prod.description = desc;
+    prod.available = stock > 0;
+
+    editingProductId = null;
+    saveAndBroadcastMenu();
+    renderMenuEditor();
+    showAdminToast(`✅ Piatto "${name}" aggiornato con successo!`);
+
+    try {
+      await fetch(`/api/admin/products/${encodeURIComponent(productId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin },
+        body: JSON.stringify({ name, category, price, description: desc, stock, unlimited: false, available: prod.available })
+      });
+    } catch (err) {}
+  };
 
   // Adjust stock delta
   window.adminAdjustStock = async function(productId, delta) {
@@ -1391,138 +1626,6 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: { 'x-admin-pin': adminPin }
       });
     } catch (e) {}
-  };
-
-  // Add / Edit Product Modal
-  window.openAddProductModal = function() {
-    const form = document.getElementById('productForm');
-    if (form) form.reset();
-    
-    const idInput = document.getElementById('prodFormId');
-    if (idInput) idInput.value = '';
-    
-    const title = document.getElementById('productModalTitle');
-    if (title) title.innerHTML = '<i class="fa-solid fa-plus text-gold"></i> Aggiungi Nuovo Piatto';
-    
-    const stockInput = document.getElementById('prodStock');
-    if (stockInput) stockInput.value = '15';
-    
-    const unlimInput = document.getElementById('prodUnlimited');
-    if (unlimInput) unlimInput.checked = false;
-    
-    const availInput = document.getElementById('prodAvailable');
-    if (availInput) availInput.checked = true;
-
-    const modal = document.getElementById('productModal');
-    if (modal) {
-      modal.classList.add('active');
-      modal.style.display = 'flex';
-    }
-  };
-
-  window.adminEditProduct = function(productId) {
-    const prod = allProducts.find(p => p.id === productId);
-    if (!prod) return;
-
-    const idInput = document.getElementById('prodFormId');
-    const nameInput = document.getElementById('prodName');
-    const catInput = document.getElementById('prodCategory');
-    const priceInput = document.getElementById('prodPrice');
-    const descInput = document.getElementById('prodDesc');
-    const stockInput = document.getElementById('prodStock');
-    const unlimInput = document.getElementById('prodUnlimited');
-    const availInput = document.getElementById('prodAvailable');
-    const title = document.getElementById('productModalTitle');
-
-    if (idInput) idInput.value = prod.id;
-    if (nameInput) nameInput.value = prod.name || '';
-    if (catInput) catInput.value = prod.category || 'pollo';
-    if (priceInput) priceInput.value = Number(prod.price || 0).toFixed(2);
-    if (descInput) descInput.value = prod.description || '';
-    if (stockInput) stockInput.value = prod.stock !== undefined ? prod.stock : 10;
-    if (unlimInput) unlimInput.checked = Boolean(prod.unlimited);
-    if (availInput) availInput.checked = (prod.available !== false);
-
-    if (title) title.innerHTML = `<i class="fa-solid fa-pen-to-square text-gold"></i> Modifica "${escapeHtml(prod.name)}"`;
-
-    const modal = document.getElementById('productModal');
-    if (modal) {
-      modal.classList.add('active');
-      modal.style.display = 'flex';
-    }
-  };
-
-  window.closeProductModal = function() {
-    const modal = document.getElementById('productModal');
-    if (modal) {
-      modal.classList.remove('active');
-      modal.style.display = 'none';
-    }
-  };
-
-  window.handleSaveProduct = async function(e) {
-    if (e && e.preventDefault) e.preventDefault();
-
-    const id = document.getElementById('prodFormId').value;
-    const name = document.getElementById('prodName').value.trim();
-    const category = document.getElementById('prodCategory').value;
-    const price = parseFloat(document.getElementById('prodPrice').value) || 0;
-    const desc = document.getElementById('prodDesc').value.trim();
-    const stock = parseInt(document.getElementById('prodStock').value, 10) || 0;
-    const unlimited = document.getElementById('prodUnlimited').checked;
-    const available = document.getElementById('prodAvailable').checked;
-
-    if (!name || price <= 0) {
-      alert('⚠️ Nome del piatto e Prezzo valido sono obbligatori.');
-      return;
-    }
-
-    if (id) {
-      // Edit existing product
-      const prod = allProducts.find(p => p.id === id);
-      if (prod) {
-        prod.name = name;
-        prod.category = category;
-        prod.price = price;
-        prod.description = desc;
-        prod.stock = stock;
-        prod.unlimited = unlimited;
-        prod.available = available;
-      }
-      try {
-        await fetch(`/api/admin/products/${encodeURIComponent(id)}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin },
-          body: JSON.stringify({ name, category, price, description: desc, stock, unlimited, available })
-        });
-      } catch (err) {}
-      showAdminToast(`✅ Piatto "${name}" aggiornato con successo!`);
-    } else {
-      // Create new product
-      const newProd = {
-        id: 'prod_' + Date.now(),
-        name: name,
-        category: category,
-        price: price,
-        description: desc,
-        stock: stock,
-        unlimited: unlimited,
-        available: available
-      };
-      allProducts.push(newProd);
-      try {
-        await fetch('/api/admin/products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-admin-pin': adminPin },
-          body: JSON.stringify(newProd)
-        });
-      } catch (err) {}
-      showAdminToast(`✅ Nuovo piatto "${name}" aggiunto al menu!`);
-    }
-
-    saveAndBroadcastMenu();
-    renderMenuEditor();
-    window.closeProductModal();
   };
 
   function saveAndBroadcastMenu() {
