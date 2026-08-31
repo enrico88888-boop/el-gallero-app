@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El Gallero - Pannello Gestione Titolare</title>
+
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-body">
+
+  <!-- PIN Login Screen (Protected - PIN Segreto) -->
+  <div class="pin-screen" id="pinScreen">
+    <div class="pin-card">
+      <img src="assets/logo.jpg" alt="Logo El Gallero" class="pin-logo">
+      <h2>AREA RISERVATA TITOLARE</h2>
+      <p>Inserisci il codice di sicurezza per accedere</p>
+      
+      <form id="pinForm" class="pin-form">
+        <div class="pin-input-group">
+          <input type="password" id="pinInput" maxlength="8" placeholder="••••••" autofocus autocomplete="current-password" required>
+          <button type="submit" class="btn-primary" id="pinSubmitBtn">
+            <i class="fa-solid fa-key"></i> Entra
+          </button>
+        </div>
+        <div class="pin-error" id="pinError" style="display:none;">Codice non corretto. Riprova.</div>
+      </form>
+      
+      <a href="index.html" class="back-to-site"><i class="fa-solid fa-arrow-left"></i> Torna al menu clienti</a>
+    </div>
+  </div>
+
+  <!-- Admin Dashboard App (Visible when authenticated) -->
+  <div class="admin-app" id="adminApp" style="display:none;">
+    
+    <!-- Admin Top Navbar -->
+    <header class="admin-navbar no-print">
+      <div class="admin-nav-container">
+        <div class="admin-brand">
+          <img src="assets/logo.jpg" alt="Logo" class="admin-nav-logo">
+          <div>
+            <span class="admin-title">EL GALLERO</span>
+            <span class="admin-badge">PANNELLO DI CONTROLLO</span>
+          </div>
+        </div>
+
+        <div class="admin-nav-actions">
+          <button type="button" id="btnOpenCustomersQuick" class="btn-nav-customers" onclick="window.adminSwitchTab('customersTab')" title="Visualizza Rubrica Clienti"><i class="fa-solid fa-address-book"></i> <span class="hide-mobile">Rubrica Clienti</span></button>
+          <a href="index.html" target="_blank" class="btn-nav-view" title="Apri vista cliente"><i class="fa-solid fa-arrow-up-right-from-square"></i> <span class="hide-mobile">Menu Clienti</span></a>
+          <button type="button" id="adminRefreshBtn" class="btn-nav-refresh" onclick="window.adminReloadData()" title="Aggiorna dati"><i class="fa-solid fa-rotate"></i> <span class="hide-mobile">Aggiorna</span></button>
+          <button type="button" id="adminLogoutBtn" class="btn-nav-logout" onclick="window.adminLogout()" title="Esci"><i class="fa-solid fa-right-from-bracket"></i></button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="admin-main">
+      <div class="admin-container">
+        
+        <!-- Navigation Tabs: Prenotazioni / Rubrica Clienti / Scorte & Menu / Impostazioni -->
+        <div class="admin-tabs no-print">
+          <button type="button" class="adm-tab active" data-tab="bookingsTab" onclick="window.adminSwitchTab('bookingsTab')">
+            <i class="fa-solid fa-list-check"></i> Gestione Prenotazioni
+            <span class="tab-badge" id="pendingOrdersBadge" style="display:none;">0</span>
+          </button>
+          <button type="button" class="adm-tab" data-tab="customersTab" id="tabBtnCustomers" onclick="window.adminSwitchTab('customersTab')">
+            <i class="fa-solid fa-users"></i> Rubrica Clienti & Statistiche
+            <span class="tab-badge-gold" id="totalClientsBadge" style="display:none;">0</span>
+          </button>
+          <button type="button" class="adm-tab" data-tab="menuTab" onclick="window.adminSwitchTab('menuTab')">
+            <i class="fa-solid fa-boxes-stacked"></i> Modifica Scorte & Prezzi
+          </button>
+          <button type="button" class="adm-tab" data-tab="settingsTab" onclick="window.adminSwitchTab('settingsTab')">
+            <i class="fa-solid fa-sliders"></i> Impostazioni Negozio
+          </button>
+        </div>
+
+        <!-- TAB 1: PRENOTAZIONI -->
+        <section class="tab-panel active" id="bookingsTab">
+          
+          <!-- Quick Summary Stats -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon stat-icon-gold"><i class="fa-solid fa-calendar-check"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Ordini di Oggi</span>
+                <strong class="stat-value" id="statTodayCount">0</strong>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon stat-icon-warning"><i class="fa-solid fa-hourglass-half"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Da Confermare</span>
+                <strong class="stat-value text-warning" id="statPendingCount">0</strong>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon stat-icon-green"><i class="fa-solid fa-circle-check"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Confermati</span>
+                <strong class="stat-value text-green" id="statConfirmedCount">0</strong>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon stat-icon-blue"><i class="fa-solid fa-euro-sign"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Incasso Stimato Oggi</span>
+                <strong class="stat-value text-gold" id="statTodayRevenue">0,00 €</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bookings Filter Bar -->
+          <div class="filters-card no-print">
+            <div class="filters-row">
+              
+              <!-- Date Filter -->
+              <div class="filter-group">
+                <label><i class="fa-solid fa-calendar"></i> Filtra Data:</label>
+                <div class="btn-group-dates" id="dateFilterGroup">
+                  <button type="button" class="btn-filter-date active" data-date="all" onclick="window.adminSetDateFilter('all')">Tutte</button>
+                  <button type="button" class="btn-filter-date" data-date="today" onclick="window.adminSetDateFilter('today')">Oggi</button>
+                  <button type="button" class="btn-filter-date" data-date="tomorrow" onclick="window.adminSetDateFilter('tomorrow')">Domani</button>
+                </div>
+                <input type="date" id="customDateFilter" class="custom-date-input" onchange="window.adminSetCustomDate(this.value)">
+              </div>
+
+              <!-- Status Filter -->
+              <div class="filter-group">
+                <label><i class="fa-solid fa-filter"></i> Stato:</label>
+                <select id="statusFilterSelect" onchange="window.adminSetStatusFilter(this.value)">
+                  <option value="all">Tutti gli stati</option>
+                  <option value="in_attesa">In Attesa</option>
+                  <option value="confermato">Confermati</option>
+                  <option value="completato">Completati</option>
+                  <option value="annullato">Annullati</option>
+                </select>
+              </div>
+
+              <!-- Search Filter -->
+              <div class="filter-group filter-search">
+                <label><i class="fa-solid fa-magnifying-glass"></i> Cerca:</label>
+                <input type="text" id="bookingSearchInput" placeholder="Nome, Telefono o Codice..." oninput="window.adminSearchBookings(this.value)">
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Bookings List Container -->
+          <div class="bookings-section">
+            <div class="bookings-header">
+              <h3 id="bookingsListTitle">Tutte le Prenotazioni</h3>
+              <span id="bookingsCountBadge" class="items-count-badge">0 prenotazioni</span>
+            </div>
+
+            <div class="bookings-grid" id="bookingsGrid">
+              <!-- Injected dynamically via JS -->
+            </div>
+          </div>
+
+        </section>
+
+        <!-- TAB 2: RUBRICA CLIENTI & EXPORT -->
+        <section class="tab-panel" id="customersTab" style="display:none;">
+          
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon stat-icon-gold"><i class="fa-solid fa-users"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Clienti Totali Registrati</span>
+                <strong class="stat-value" id="statCustTotal">0</strong>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon stat-icon-green"><i class="fa-solid fa-calendar-day"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Clienti con Ordini Oggi</span>
+                <strong class="stat-value text-green" id="statCustToday">0</strong>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon stat-icon-blue"><i class="fa-solid fa-star"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Clienti VIP (2+ ordini)</span>
+                <strong class="stat-value text-gold" id="statCustVip">0</strong>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon stat-icon-warning"><i class="fa-solid fa-sack-dollar"></i></div>
+              <div class="stat-info">
+                <span class="stat-label">Incasso Totale Rubrica</span>
+                <strong class="stat-value text-gold" id="statCustRevenue">0,00 €</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Customer Filters & Export Toolbar -->
+          <div class="filters-card no-print">
+            <div class="customer-toolbar-row">
+              
+              <div class="filter-group">
+                <label><i class="fa-solid fa-filter"></i> Filtra Clienti:</label>
+                <div class="btn-group-dates" id="custFilterGroup">
+                  <button type="button" class="btn-filter-cust active" data-cust-filter="all" onclick="window.adminSetCustFilter('all')">Tutti</button>
+                  <button type="button" class="btn-filter-cust" data-cust-filter="today" onclick="window.adminSetCustFilter('today')">Oggi</button>
+                  <button type="button" class="btn-filter-cust" data-cust-filter="vip" onclick="window.adminSetCustFilter('vip')">VIP</button>
+                </div>
+              </div>
+
+              <div class="filter-group filter-search">
+                <label><i class="fa-solid fa-magnifying-glass"></i> Cerca Cliente:</label>
+                <input type="text" id="custSearchInput" placeholder="Nome o Telefono..." oninput="window.adminSearchCustomers(this.value)">
+              </div>
+
+              <!-- Export & Action Buttons -->
+              <div class="customer-export-actions">
+                <button type="button" class="btn-export btn-export-excel" id="btnExportExcel" onclick="window.exportCustomersToExcel()" title="Esporta in file Excel .xlsx">
+                  <i class="fa-solid fa-file-excel"></i> Esporta EXCEL
+                </button>
+                <button type="button" class="btn-export btn-export-pdf" id="btnExportPdf" onclick="window.exportCustomersToPdf()" title="Esporta o Stampa lista PDF">
+                  <i class="fa-solid fa-file-pdf"></i> Esporta PDF
+                </button>
+                <button type="button" class="btn-export btn-export-clear" id="btnClearRubrica" onclick="window.handleClearRubrica()" title="Svuota l'intera Rubrica Clienti">
+                  <i class="fa-solid fa-trash-can"></i> Cancella Rubrica
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Customers Table Card -->
+          <div class="customers-table-card">
+            <div class="customers-table-header">
+              <div>
+                <h3><i class="fa-solid fa-address-book text-gold"></i> Rubrica Clienti El Gallero</h3>
+                <p>Registrata automaticamente ad ogni prenotazione effettuata</p>
+              </div>
+              <div>
+                <span id="custCountBadge" class="items-count-badge">0 clienti</span>
+              </div>
+            </div>
+
+            <!-- Customer Table -->
+            <div class="table-responsive">
+              <table class="cust-table" id="custMainTable">
+                <thead>
+                  <tr>
+                    <th>Nome e Cognome</th>
+                    <th>Telefono</th>
+                    <th style="text-align:center;">Ordini</th>
+                    <th>Ultima Prenotazione</th>
+                    <th>Modalità</th>
+                    <th style="text-align:right;">Totale Speso</th>
+                    <th style="text-align:center;" class="no-print">WhatsApp</th>
+                    <th style="text-align:center;" class="no-print">Azioni</th>
+                  </tr>
+                </thead>
+                <tbody id="custTableBody">
+                  <!-- Injected dynamically via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- TAB 3: GESTIONE SCORTE & MENU -->
+        <section class="tab-panel" id="menuTab" style="display:none;">
+          <div class="menu-management-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div>
+              <h3><i class="fa-solid fa-boxes-stacked text-gold"></i> Quantitativi & Scorte Prodotti</h3>
+              <p>Modifica manualmente le disponibilità in tempo reale o aggiorna i prezzi</p>
+            </div>
+            <button type="button" class="btn-primary" onclick="window.openAddProductModal()">
+              <i class="fa-solid fa-plus"></i> Aggiungi Nuovo Piatto
+            </button>
+          </div>
+
+          <div class="menu-editor-grid" id="menuEditorGrid">
+            <!-- Injected dynamically via JS -->
+          </div>
+        </section>
+
+        <!-- TAB 4: IMPOSTAZIONI NEGOZIO -->
+        <section class="tab-panel" id="settingsTab" style="display:none;">
+          <div class="settings-card">
+            <h3><i class="fa-solid fa-sliders text-gold"></i> Impostazioni Girarrosto</h3>
+            <p class="settings-desc">Configurazione sede, recapito e orari di ritiro delle prenotazioni.</p>
+
+            <form id="storeSettingsForm" onsubmit="window.handleSaveSettings(event)">
+              <div class="form-group">
+                <label for="setStoreName">Nome Attività</label>
+                <input type="text" id="setStoreName" value="EL GALLERO" required>
+              </div>
+
+              <div class="form-group">
+                <label for="setSubtitle">Sottotitolo</label>
+                <input type="text" id="setSubtitle" value="100% cotto a legna • Solo prenotazioni" required>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group col-half">
+                  <label for="setPhone">Telefono WhatsApp</label>
+                  <input type="text" id="setPhone" value="3775975734">
+                </div>
+                <div class="form-group col-half">
+                  <label for="setAdminPin">Password di Accesso</label>
+                  <input type="password" id="setAdminPin" maxlength="8" placeholder="••••••" required>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="setTimeSlots">Fasce Orarie di Ritiro (separate da virgola)</label>
+                <textarea id="setTimeSlots" rows="3"></textarea>
+              </div>
+
+              <div class="settings-actions">
+                <button type="submit" class="btn-primary">
+                  <i class="fa-solid fa-floppy-disk"></i> Salva Impostazioni
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Modal: Modifica Comanda / Prenotazione (Venditore con Sconto Carta Fedeltà) -->
+  <div class="modal-overlay" id="editBookingModal">
+    <div class="modal-card edit-booking-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h2><i class="fa-solid fa-pen-to-square text-gold"></i> Modifica Comanda <span id="editBookingCode" class="text-gold"></span></h2>
+          <p>Aggiorna piatti, quantitativi, orario o applica sconto Carta Fedeltà</p>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="window.closeEditBookingModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body">
+        <form id="editBookingForm" onsubmit="window.handleSaveEditBooking(event)">
+          <input type="hidden" id="editBookingId">
+
+          <div class="form-row">
+            <div class="form-group col-half">
+              <label for="editStatus"><i class="fa-solid fa-flag"></i> Stato Comanda</label>
+              <select id="editStatus" required>
+                <option value="in_attesa">In Attesa di conferma</option>
+                <option value="confermato">Confermata</option>
+                <option value="completato">Completata / Ritirata</option>
+                <option value="annullato">Annullata</option>
+              </select>
+            </div>
+            <div class="form-group col-half">
+              <label for="editOrderType"><i class="fa-solid fa-truck-ramp-box"></i> Modalità</label>
+              <select id="editOrderType" onchange="window.adminToggleEditDelivery(this.value)">
+                <option value="ritiro">Ritiro in Sede (Asporto)</option>
+                <option value="domicilio">Consegna a Domicilio (+2,00 €)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" id="editDeliveryAddressGroup" style="display:none;">
+            <label for="editDeliveryAddress"><i class="fa-solid fa-location-dot"></i> Indirizzo Consegna</label>
+            <input type="text" id="editDeliveryAddress" placeholder="Es. Via Roma 15, Casavatore (Scala, Piano, Citofono)">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-half">
+              <label for="editCustName"><i class="fa-solid fa-user"></i> Nome Cliente</label>
+              <input type="text" id="editCustName" required>
+            </div>
+            <div class="form-group col-half">
+              <label for="editCustPhone"><i class="fa-solid fa-phone"></i> Telefono</label>
+              <input type="tel" id="editCustPhone" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-half">
+              <label for="editPickupDate"><i class="fa-solid fa-calendar"></i> Data Ritiro</label>
+              <input type="date" id="editPickupDate" required>
+            </div>
+            <div class="form-group col-half">
+              <label for="editPickupTime"><i class="fa-solid fa-clock"></i> Orario Ritiro</label>
+              <input type="text" id="editPickupTime" placeholder="Es. 19:30" required>
+            </div>
+          </div>
+
+          <!-- Piatti Comanda Editor -->
+          <div class="edit-comanda-section" style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:10px; padding:12px; margin:12px 0;">
+            <div class="edit-section-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <label style="font-weight:800; color:var(--gold-light); margin:0;"><i class="fa-solid fa-drumstick-bite text-gold"></i> Piatti Ordinati nella Comanda:</label>
+            </div>
+            
+            <div id="editComandaItemsList" class="edit-items-box" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
+              <!-- List of item rows injected via JS -->
+            </div>
+
+            <!-- Add Product to Comanda Dropdown -->
+            <div class="add-to-comanda-row" style="display:flex; gap:6px;">
+              <select id="editAddProductSelect" style="flex:1;">
+                <option value="">-- Aggiungi piatto dal menu --</option>
+              </select>
+              <button type="button" class="btn-secondary" onclick="window.adminAddItemToComanda()" style="padding:6px 12px; font-size:0.82rem;">
+                <i class="fa-solid fa-plus"></i> Aggiungi
+              </button>
+            </div>
+          </div>
+
+          <!-- Spunta e Sconto Carta Fedeltà -->
+          <div class="fidelity-discount-box" style="background:rgba(212,175,55,0.08); border:1.5px solid var(--gold-primary); border-radius:10px; padding:12px; margin:12px 0;">
+            <div class="fidelity-header-toggle">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:700; color:var(--gold-light); margin:0;">
+                <input type="checkbox" id="editHasFidelityCard" onchange="window.adminToggleFidelityDiscount(this.checked)" style="width:18px; height:18px; accent-color:var(--gold-primary);">
+                <span><i class="fa-solid fa-id-card text-gold"></i> <strong>Possessore Carta Fedeltà El Gallero</strong></span>
+              </label>
+            </div>
+            
+            <div id="fidelityDiscountInputGroup" style="display:none; margin-top:10px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px;">
+                <label for="editFidelityDiscount" style="margin:0; font-size:0.85rem;">Importo Sconto Dedicato (€):</label>
+                <input type="number" id="editFidelityDiscount" step="0.50" min="0" value="2.00" oninput="window.adminRecalculateEditTotal()" style="width:100px; text-align:right; font-weight:800; color:#2ecc71;">
+              </div>
+              
+              <div class="quick-discount-chips" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                <span style="font-size:0.72rem; color:var(--text-muted);">Sconti rapidi:</span>
+                <button type="button" class="btn-disc-chip" onclick="window.adminSetQuickDiscount(1.00)">-1,00 €</button>
+                <button type="button" class="btn-disc-chip" onclick="window.adminSetQuickDiscount(2.00)">-2,00 €</button>
+                <button type="button" class="btn-disc-chip" onclick="window.adminSetQuickDiscount(3.00)">-3,00 €</button>
+                <button type="button" class="btn-disc-chip" onclick="window.adminSetQuickDiscount(5.00)">-5,00 €</button>
+                <button type="button" class="btn-disc-chip text-muted" onclick="window.adminSetQuickDiscount(0)">Azzera</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="editNotes"><i class="fa-solid fa-comment"></i> Note del Cliente per la Cucina</label>
+            <textarea id="editNotes" rows="2"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="editAdminNotes"><i class="fa-solid fa-clipboard-user"></i> Note Interne Personale (Facoltativo)</label>
+            <input type="text" id="editAdminNotes" placeholder="Es. Pagato acconto, tavolo 3...">
+          </div>
+
+          <!-- Total Calculation Box Preview -->
+          <div class="edit-total-preview-card" style="background:var(--bg-main); border:1px dashed var(--gold-primary); border-radius:8px; padding:10px 12px; margin:14px 0;">
+            <div class="preview-line" style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:3px;">
+              <span>Subtotale Piatti:</span>
+              <strong id="editPreviewItemsSubtotal">0,00 €</strong>
+            </div>
+            <div class="preview-line" id="editPreviewDeliveryFeeLine" style="display:none; justify-content:space-between; font-size:0.85rem; margin-bottom:3px;">
+              <span>🛵 Consegna a Domicilio:</span>
+              <strong class="text-gold">+ 2,00 €</strong>
+            </div>
+            <div class="preview-line" id="editPreviewFidelityLine" style="display:none; justify-content:space-between; font-size:0.85rem; margin-bottom:3px; color:#2ecc71;">
+              <span><i class="fa-solid fa-id-card"></i> Sconto Carta Fedeltà:</span>
+              <strong id="editPreviewFidelityDiscount">- 0,00 €</strong>
+            </div>
+            <div class="preview-line total-highlight" style="display:flex; justify-content:space-between; font-size:1.05rem; font-weight:800; border-top:1px solid rgba(255,255,255,0.08); padding-top:6px; margin-top:4px;">
+              <span>TOTALE COMANDA RICALCOLATO:</span>
+              <strong class="text-gold" id="editPreviewFinalTotal">0,00 €</strong>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" onclick="window.closeEditBookingModal()">Annulla</button>
+            <button type="submit" class="btn-primary"><i class="fa-solid fa-floppy-disk"></i> Salva Modifiche Comanda</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Aggiungi / Modifica Prodotto Menu -->
+  <div class="modal-overlay" id="productModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h2 id="productModalTitle"><i class="fa-solid fa-utensils text-gold"></i> Prodotto Menu</h2>
+          <p>Configura dettagli e prezzo del prodotto</p>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="window.closeProductModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body">
+        <form id="productForm" onsubmit="window.handleSaveProduct(event)">
+          <input type="hidden" id="prodFormId">
+
+          <div class="form-group">
+            <label for="prodName">Nome Piatto / Prodotto <span class="required">*</span></label>
+            <input type="text" id="prodName" placeholder="Es. Pollo con patate" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-half">
+              <label for="prodCategory">Categoria <span class="required">*</span></label>
+              <select id="prodCategory" required>
+                <option value="pollo">Pollo 🍗</option>
+                <option value="sfizio">Sfizio 🍟</option>
+                <option value="bibite">Bibite 🥤</option>
+                <option value="box">Box 📦</option>
+              </select>
+            </div>
+            <div class="form-group col-half">
+              <label for="prodPrice">Prezzo (€) <span class="required">*</span></label>
+              <input type="number" id="prodPrice" step="0.10" min="0" placeholder="Es. 9.00" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="prodDesc">Descrizione</label>
+            <textarea id="prodDesc" rows="2" placeholder="Descrizione del prodotto..."></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-half">
+              <label for="prodStock"><i class="fa-solid fa-boxes-stacked"></i> Quantità Disponibile (Stock)</label>
+              <input type="number" id="prodStock" min="0" value="15" placeholder="Es. 15">
+            </div>
+            <div class="form-group col-half" style="display:flex; align-items:flex-end;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:12px;">
+                <input type="checkbox" id="prodUnlimited" style="width:auto;">
+                <span>Disponibilità Illimitata</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+              <input type="checkbox" id="prodAvailable" checked style="width:auto;">
+              <span>Attivo e visibile nel Menu</span>
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" onclick="window.closeProductModal()">Annulla</button>
+            <button type="submit" class="btn-primary"><i class="fa-solid fa-floppy-disk"></i> Salva Prodotto</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast & Print Container -->
+  <div class="toast-container" id="adminToastContainer"></div>
+
+  <!-- Libraries for Excel & PDF Export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+  <!-- Admin JS with Cache Buster -->
+  <script src="js/admin.js?v=6.0"></script>
+</body>
+</html>

@@ -1,0 +1,324 @@
+{
+  "settings": {
+    "storeName": "EL GALLERO",
+    "subtitle": "100% cotto a legna • Solo prenotazioni",
+    "phone": "3775975734",
+    "address": "Casavatore in Via E. A. Mario, 30",
+    "adminPin": "230888",
+    "currency": "€",
+    "timeSlots": [
+      "19:00",
+      "19:15",
+      "19:30",
+      "19:45",
+      "20:00",
+      "20:15",
+      "20:30",
+      "20:45",
+      "21:00",
+      "21:15",
+      "21:30"
+    ]
+  },
+  "categories": [
+    {
+      "id": "pollo",
+      "name": "Pollo",
+      "icon": "🍗",
+      "description": "Pollo girarrosto cotto a legna allo spiedo, morbido e dorato"
+    },
+    {
+      "id": "sfizio",
+      "name": "Sfizio",
+      "icon": "🍟",
+      "description": "Patate al forno rustiche, crocchè e sfiziosità artigianali"
+    },
+    {
+      "id": "bibite",
+      "name": "Bibite",
+      "icon": "🥤",
+      "description": "Bibite fresche e birre selezionate"
+    },
+    {
+      "id": "box",
+      "name": "Box",
+      "icon": "📦",
+      "description": "Menu completi e convenienti per singoli, coppie e famiglie"
+    }
+  ],
+  "products": [
+    {
+      "id": "p1",
+      "category": "pollo",
+      "name": "Pollo Intero Cotto a Legna",
+      "price": 8,
+      "stock": 28,
+      "unlimited": false,
+      "description": "Pollo intero girarrosto cotto 100% a legna allo spiedo con erbe aromatiche",
+      "available": true
+    },
+    {
+      "id": "p2",
+      "category": "pollo",
+      "name": "Mezzo Pollo Cotto a Legna",
+      "price": 5,
+      "stock": 15,
+      "unlimited": false,
+      "description": "Mezzo pollo dorato e succulento cotto allo spiedo",
+      "available": true
+    },
+    {
+      "id": "p3",
+      "category": "pollo",
+      "name": "Pollo Intero con Patate al Forno",
+      "price": 12,
+      "stock": 11,
+      "unlimited": false,
+      "description": "Pollo intero a legna con porzione abbondante di patate al forno speziate",
+      "available": true
+    },
+    {
+      "id": "p4",
+      "category": "pollo",
+      "name": "Mezzo Pollo con Patate al Forno",
+      "price": 8,
+      "stock": 12,
+      "unlimited": false,
+      "description": "Mezzo pollo a legna con contorno di patate rustiche al rosmarino",
+      "available": true
+    },
+    {
+      "id": "p5",
+      "category": "pollo",
+      "name": "Coscette di Pollo (fusilli)",
+      "price": 2,
+      "stock": 12,
+      "unlimited": false,
+      "description": "3cosce di pollo marinate con spezie della casa e cotte a legna",
+      "available": true
+    },
+    {
+      "id": "p6",
+      "category": "pollo",
+      "name": "Ali di Pollo  (1 pz)",
+      "price": 1,
+      "stock": 18,
+      "unlimited": false,
+      "description": "alette di pollo",
+      "available": true
+    },
+    {
+      "id": "s1",
+      "category": "sfizio",
+      "name": "Patate al Forno Rustiche Grandi",
+      "price": 5,
+      "stock": 21,
+      "unlimited": false,
+      "description": "Porzione abbondante di patate cotte a legna con rosmarino e aromi",
+      "available": true
+    },
+    {
+      "id": "s2",
+      "category": "sfizio",
+      "name": "Patate al Forno Rustiche Medie",
+      "price": 3,
+      "stock": 29,
+      "unlimited": false,
+      "description": "Porzione classica di patate al forno saporite",
+      "available": true
+    },
+    {
+      "id": "s7",
+      "category": "sfizio",
+      "name": "Croccantella di Pollo Panata",
+      "price": 3,
+      "stock": 13,
+      "unlimited": false,
+      "description": "Filetto di pollo impanato croccante e dorato",
+      "available": true
+    },
+    {
+      "id": "b1",
+      "category": "bibite",
+      "name": "Coca Cola in Lattina 33cl",
+      "price": 2,
+      "stock": 40,
+      "unlimited": true,
+      "description": "Lattina fresca originale 33cl",
+      "available": true
+    },
+    {
+      "id": "b2",
+      "category": "bibite",
+      "name": "Coca Cola Zero 33cl",
+      "price": 2,
+      "stock": 30,
+      "unlimited": true,
+      "description": "Lattina fresca senza zuccheri 33cl",
+      "available": true
+    },
+    {
+      "id": "b3",
+      "category": "bibite",
+      "name": "Coca Cola in Bottiglia 1.5L",
+      "price": 3.5,
+      "stock": 25,
+      "unlimited": true,
+      "description": "Bottiglia formato famiglia da 1.5 Litri",
+      "available": true
+    },
+    {
+      "id": "b4",
+      "category": "bibite",
+      "name": "Fanta in Lattina 33cl",
+      "price": 2,
+      "stock": 30,
+      "unlimited": true,
+      "description": "Aranciata fresca in lattina 33cl",
+      "available": true
+    },
+    {
+      "id": "b5",
+      "category": "bibite",
+      "name": "Sprite in Lattina 33cl",
+      "price": 2,
+      "stock": 25,
+      "unlimited": true,
+      "description": "Gusto fresco e frizzante al limone 33cl",
+      "available": true
+    },
+    {
+      "id": "b6",
+      "category": "bibite",
+      "name": "Birra Nastro Azzurro 66cl",
+      "price": 3,
+      "stock": 35,
+      "unlimited": true,
+      "description": "Birra bionda italiana fresca in bottiglia 66cl",
+      "available": true
+    },
+    {
+      "id": "b7",
+      "category": "bibite",
+      "name": "Birra Moretti 66cl",
+      "price": 3,
+      "stock": 30,
+      "unlimited": true,
+      "description": "Birra classica ricetta originale 66cl",
+      "available": true
+    },
+    {
+      "id": "b8",
+      "category": "bibite",
+      "name": "Birra Heineken 33cl",
+      "price": 2,
+      "stock": 30,
+      "unlimited": true,
+      "description": "Birra bionda internazionale 33cl",
+      "available": true
+    },
+    {
+      "id": "b9",
+      "category": "bibite",
+      "name": "Acqua Minerale Naturale 1L",
+      "price": 1.5,
+      "stock": 50,
+      "unlimited": true,
+      "description": "Bottiglia da 1 Litro",
+      "available": true
+    },
+    {
+      "id": "b10",
+      "category": "bibite",
+      "name": "Acqua Minerale Frizzante 1L",
+      "price": 1.5,
+      "stock": 50,
+      "unlimited": true,
+      "description": "Bottiglia da 1 Litro frizzante",
+      "available": true
+    },
+    {
+      "id": "box1",
+      "category": "box",
+      "name": "Box mono",
+      "price": 10,
+      "stock": 15,
+      "unlimited": false,
+      "description": "Mezzo pollo cotto a legna + Porzione patate al forno + 1 Bibita in lattina 33cl",
+      "available": true
+    },
+    {
+      "id": "box2",
+      "category": "box",
+      "name": "Box Coppia",
+      "price": 13,
+      "stock": 14,
+      "unlimited": false,
+      "description": "1 Pollo intero a legna + Porzione grande patate al forno + 2 Bibite 33cl o 1 Birra 66cl",
+      "available": true
+    },
+    {
+      "id": "box3",
+      "category": "box",
+      "name": "Box Famiglia",
+      "price": 30,
+      "stock": 10,
+      "unlimited": false,
+      "description": "2 Polli interi a legna + Maxi patate al forno + 4 Sfizi misti + 1 Bottiglia Coca Cola 1.5L",
+      "available": true
+    },
+    {
+      "id": "box4",
+      "category": "box",
+      "name": "Box Sfiziosa",
+      "price": 20,
+      "stock": 11,
+      "unlimited": false,
+      "description": "1 Pollo intero a legna + Mix Sfizi 6 pz + Patate al forno grandi + 2 Birre o Bibite",
+      "available": true
+    }
+  ],
+  "bookings": [
+    {
+      "id": "bkg_1788183915347_l89n",
+      "code": "EG-6295",
+      "customerName": "Enrico Di Marino",
+      "customerPhone": "3519044362",
+      "pickupDate": "2026-08-31",
+      "pickupTime": "19:00",
+      "orderType": "ritiro",
+      "orderTypeText": "Ritiro in Sede (Asporto)",
+      "deliveryAddress": "",
+      "deliveryFee": 0,
+      "fidelityDiscount": 2,
+      "itemsSubtotal": 7,
+      "allergens": "",
+      "notes": "",
+      "items": [
+        {
+          "id": "p5",
+          "name": "Coscette di Pollo (fusilli)",
+          "category": "pollo",
+          "price": 2,
+          "quantity": 1,
+          "subtotal": 2
+        },
+        {
+          "id": "s1",
+          "name": "Patate al Forno Rustiche Grandi",
+          "category": "sfizio",
+          "price": 5,
+          "quantity": 1,
+          "subtotal": 5
+        }
+      ],
+      "totalAmount": 5,
+      "status": "completato",
+      "statusText": "Completata / Consegnata",
+      "createdAt": "2026-08-31T13:45:15.347Z",
+      "updatedAt": "2026-08-31T13:46:34.637Z",
+      "adminNotes": "",
+      "hasFidelityCard": true
+    }
+  ]
+}
