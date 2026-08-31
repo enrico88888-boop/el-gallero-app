@@ -725,23 +725,14 @@
           <div class="rcpt-footer-note" id="rcptTimestamp"></div>
         </div>
 
-        <div class="receipt-actions">
-          <button type="button" class="btn-success btn-block" id="whatsappShareBtn" onclick="window.shareOnWhatsApp()">
-            <i class="fa-brands fa-whatsapp"></i> Invia Promemoria su WhatsApp
+               <div class="receipt-actions" style="margin-top:14px; display:flex; flex-direction:column; gap:8px;">
+          <button type="button" class="btn-primary btn-block" id="btnContinuaMenu" onclick="window.appNewOrder()" style="padding:14px; font-size:1.05rem; font-weight:800; border-radius:10px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;">
+            <i class="fa-solid fa-arrow-left"></i> Continua (Torna al Menu)
           </button>
-          <div class="receipt-btn-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
-            <button type="button" class="btn-secondary" onclick="window.printReceipt()">
-              <i class="fa-solid fa-print"></i> Stampa
-            </button>
-            <button type="button" class="btn-primary" onclick="window.appNewOrder()">
-              <i class="fa-solid fa-plus"></i> Nuova
-            </button>
-          </div>
+          <button type="button" class="btn-secondary btn-block" onclick="window.printReceipt()" style="padding:10px; font-size:0.88rem; border-radius:8px;">
+            <i class="fa-solid fa-print"></i> Stampa Ricevuta
+          </button>
         </div>
-
-      </div>
-    </div>
-
     <!-- 6. MODAL MODIFICA COMANDA (SOLO VENDITORE CON SCONTO CARTA FEDELTÀ) -->
     <div class="modal-overlay" id="editBookingModal">
       <div class="modal-card edit-booking-modal-card">
