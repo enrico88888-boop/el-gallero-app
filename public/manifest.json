@@ -1,0 +1,59 @@
+﻿{
+  "name": "El Gallero - Pollo Cotto a Legna",
+  "short_name": "El Gallero",
+  "description": "App Ufficiale per la prenotazione online di pollo cotto a legna e sfizi a Casavatore",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#120e0d",
+  "theme_color": "#d4af37",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/assets/logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ],
+  "categories": ["food", "shopping", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "Prenota Pollo",
+      "short_name": "Prenota",
+      "description": "Ordina subito il tuo pollo a legna",
+      "url": "/",
+      "icons": [{ "src": "/assets/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Pannello Venditore",
+      "short_name": "Venditore",
+      "description": "Gestisci comande e scorte",
+      "url": "/admin.html",
+      "icons": [{ "src": "/assets/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
