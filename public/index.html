@@ -4,14 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>El Gallero - App Girarrosto | Solo Prenotazioni</title>
-  <meta name="theme-color" content="#141110">
+  <meta name="theme-color" content="#d4af37">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="El Gallero">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
 
   <!-- Google Fonts & Font Awesome -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   
@@ -725,7 +729,7 @@
           <div class="rcpt-footer-note" id="rcptTimestamp"></div>
         </div>
 
-               <div class="receipt-actions" style="margin-top:14px; display:flex; flex-direction:column; gap:8px;">
+        <div class="receipt-actions" style="margin-top:14px; display:flex; flex-direction:column; gap:8px;">
           <button type="button" class="btn-primary btn-block" id="btnContinuaMenu" onclick="window.appNewOrder()" style="padding:14px; font-size:1.05rem; font-weight:800; border-radius:10px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;">
             <i class="fa-solid fa-arrow-left"></i> Continua (Torna al Menu)
           </button>
@@ -733,6 +737,10 @@
             <i class="fa-solid fa-print"></i> Stampa Ricevuta
           </button>
         </div>
+
+      </div>
+    </div>
+
     <!-- 6. MODAL MODIFICA COMANDA (SOLO VENDITORE CON SCONTO CARTA FEDELTÀ) -->
     <div class="modal-overlay" id="editBookingModal">
       <div class="modal-card edit-booking-modal-card">
@@ -947,6 +955,21 @@
             </div>
           </form>
         </div>
+      </div>
+    </div>
+
+    <!-- PWA Install Banner for Android & iOS -->
+    <div id="pwaInstallBanner" class="pwa-install-bar" style="display:none;">
+      <div class="pwa-bar-left">
+        <img src="assets/icon-192.png" alt="Logo El Gallero" class="pwa-bar-logo">
+        <div class="pwa-bar-info">
+          <strong>App El Gallero</strong>
+          <span>Installa sul tuo cellulare per ordinare subito!</span>
+        </div>
+      </div>
+      <div class="pwa-bar-right">
+        <button type="button" id="pwaInstallBtn" class="btn-pwa-action"><i class="fa-solid fa-download"></i> Installa</button>
+        <button type="button" id="pwaDismissBtn" class="btn-pwa-close"><i class="fa-solid fa-xmark"></i></button>
       </div>
     </div>
 
