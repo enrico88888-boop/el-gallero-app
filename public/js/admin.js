@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  async function loadAllAdminData() {
+  async function loadAllAdminData(isBackgroundSync = false) {
     // 1. Load Bookings
     let bookingsLoaded = false;
     try {
@@ -149,31 +149,34 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // 2. Load Menu & Settings
-    try {
-      const [infoRes, menuRes] = await Promise.all([
-        fetch('/api/info'),
-        fetch('/api/menu')
-      ]);
-      if (infoRes.ok) {
-        const info = await infoRes.json();
-        if (info.settings) storeSettings = info.settings;
-      }
-      if (menuRes.ok) {
-        const menu = await menuRes.json();
-        if (menu.products) allProducts = menu.products;
-        if (menu.categories) allCategories = menu.categories;
-      }
-    } catch (e) {
+    // 2. Load Menu & Settings only if not background sync or not editing menu
+    const isEditingMenu = isCreatingNewProduct || (editingProductId !== null) || (document.activeElement && menuEditorGrid && menuEditorGrid.contains(document.activeElement));
+    if (!isBackgroundSync || !isEditingMenu) {
       try {
-        const store = JSON.parse(localStorage.getItem('el_gallero_data') || '{}');
-        storeSettings = store.settings || {};
-        allProducts = store.products || [];
-        allCategories = store.categories || [];
-      } catch (err) {}
+        const [infoRes, menuRes] = await Promise.all([
+          fetch('/api/info'),
+          fetch('/api/menu')
+        ]);
+        if (infoRes.ok) {
+          const info = await infoRes.json();
+          if (info.settings) storeSettings = info.settings;
+        }
+        if (menuRes.ok) {
+          const menu = await menuRes.json();
+          if (menu.products) allProducts = menu.products;
+          if (menu.categories) allCategories = menu.categories;
+        }
+      } catch (e) {
+        try {
+          const store = JSON.parse(localStorage.getItem('el_gallero_data') || '{}');
+          storeSettings = store.settings || {};
+          allProducts = store.products || [];
+          allCategories = store.categories || [];
+        } catch (err) {}
+      }
     }
 
-    if (storeSettings) {
+    if (storeSettings && !isBackgroundSync) {
       if (document.getElementById('setStoreName')) document.getElementById('setStoreName').value = storeSettings.storeName || 'EL GALLERO';
       if (document.getElementById('setSubtitle')) document.getElementById('setSubtitle').value = storeSettings.subtitle || '100% cotto a legna • Solo prenotazioni';
       if (document.getElementById('setPhone')) document.getElementById('setPhone').value = storeSettings.phone || '3775975734';
@@ -184,9 +187,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     computeCustomersFromBookings();
-    renderBookings();
+
+    // Check if user is currently typing in bookings or editing a booking
+    const activeEl = document.activeElement;
+    const isTypingInBookings = activeEl && bookingsGrid && bookingsGrid.contains(activeEl);
+    const isEditingBooking = (inlineEditingBookingId !== null) || isTypingInBookings;
+
+    if (!isBackgroundSync || !isEditingBooking) {
+      renderBookings();
+    }
+
     renderCustomersTable();
-    renderMenuEditor();
+
+    // Check if user is currently typing in menu or editing a product
+    if (!isBackgroundSync || !isEditingMenu) {
+      renderMenuEditor();
+    }
+
     updateStatsUI();
   }
 
@@ -1294,9 +1311,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---------------- SCORTE & MENU MANAGEMENT ----------------
 
-  // Inline creation & editing state
+  // Inline creation & editing state with Draft Persistence
   let isCreatingNewProduct = false;
   let editingProductId = null;
+  let draftNewProduct = { name: '', category: 'pollo', price: '', stock: 20, description: '' };
+  let draftEditProduct = {};
 
   function renderMenuEditor() {
     if (!menuEditorGrid) return;
@@ -1306,7 +1325,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. If currently creating a new product, render the Creation Card on top
     if (isCreatingNewProduct) {
       html += `
-        <div class="inline-new-prod-card" style="grid-column: 1 / -1; background:#1e1815; border:2px solid var(--gold-primary); border-radius:12px; padding:18px; margin-bottom:16px; box-shadow:0 8px 30px rgba(0,0,0,0.8), 0 0 20px var(--gold-glow);">
+        <div class="inline-new-prod-card" style="grid-column: 1 / -1; background:#1e1815; border:2px solid var(--gold-primary); border-radius:12px; padding:18px; margin-bottom:16px; box-shadow:0 8px 30px rgba(0,0,0,0.8), 0 0 20px var(--gold-glow); position:relative; z-index:20;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid rgba(212,175,55,0.3); padding-bottom:8px;">
             <h3 style="margin:0; font-size:1.15rem; color:var(--gold-light); display:flex; align-items:center; gap:8px;">
               <i class="fa-solid fa-plus-circle text-gold"></i> Crea & Aggiungi Nuovo Piatto nel Menu
@@ -1317,30 +1336,30 @@ document.addEventListener('DOMContentLoaded', () => {
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:12px;">
             <div>
               <label style="font-size:0.8rem; font-weight:700; color:#fff; display:block; margin-bottom:4px;">Nome Piatto / Prodotto *</label>
-              <input type="text" id="inlineNewName" placeholder="Es. Pollo al Forno Rustico" style="width:100%; padding:10px 12px; background:#120e0d; border:1px solid var(--border-color); border-radius:6px; color:#fff; font-size:0.95rem; outline:none;" required>
+              <input type="text" id="inlineNewName" value="${escapeHtml(draftNewProduct.name || '')}" oninput="draftNewProduct.name = this.value" placeholder="Es. Pollo al Forno Rustico" style="width:100%; padding:10px 12px; background:#140f0e; border:1px solid var(--border-color); border-radius:6px; color:#ffffff; font-size:0.95rem; outline:none; pointer-events:auto; user-select:text; -webkit-user-select:text; cursor:text; z-index:10; position:relative;" required>
             </div>
             <div>
               <label style="font-size:0.8rem; font-weight:700; color:#fff; display:block; margin-bottom:4px;">Categoria *</label>
-              <select id="inlineNewCategory" style="width:100%; padding:10px 12px; background:#120e0d; border:1px solid var(--border-color); border-radius:6px; color:#fff; font-size:0.95rem; outline:none;">
-                <option value="pollo">🍗 Pollo</option>
-                <option value="sfizio">🍟 Sfizio / Contorno</option>
-                <option value="bibite">🥤 Bibite</option>
-                <option value="box">📦 Box Offerta</option>
+              <select id="inlineNewCategory" onchange="draftNewProduct.category = this.value" style="width:100%; padding:10px 12px; background:#140f0e; border:1px solid var(--border-color); border-radius:6px; color:#ffffff; font-size:0.95rem; outline:none; pointer-events:auto; cursor:pointer;">
+                <option value="pollo" ${draftNewProduct.category === 'pollo' ? 'selected' : ''}>🍗 Pollo</option>
+                <option value="sfizio" ${draftNewProduct.category === 'sfizio' ? 'selected' : ''}>🍟 Sfizio / Contorno</option>
+                <option value="bibite" ${draftNewProduct.category === 'bibite' ? 'selected' : ''}>🥤 Bibite</option>
+                <option value="box" ${draftNewProduct.category === 'box' ? 'selected' : ''}>📦 Box Offerta</option>
               </select>
             </div>
             <div>
               <label style="font-size:0.8rem; font-weight:700; color:#fff; display:block; margin-bottom:4px;">Prezzo (€) *</label>
-              <input type="number" step="0.10" id="inlineNewPrice" placeholder="Es. 8.50" style="width:100%; padding:10px 12px; background:#120e0d; border:1px solid var(--border-color); border-radius:6px; color:#fff; font-size:0.95rem; outline:none;" required>
+              <input type="number" step="0.10" id="inlineNewPrice" value="${draftNewProduct.price || ''}" oninput="draftNewProduct.price = this.value" placeholder="Es. 8.50" style="width:100%; padding:10px 12px; background:#140f0e; border:1px solid var(--border-color); border-radius:6px; color:#ffffff; font-size:0.95rem; outline:none; pointer-events:auto; user-select:text; -webkit-user-select:text; cursor:text; z-index:10; position:relative;" required>
             </div>
             <div>
               <label style="font-size:0.8rem; font-weight:700; color:#fff; display:block; margin-bottom:4px;">Quantità Scorte Iniziali (Pezzi) *</label>
-              <input type="number" id="inlineNewStock" value="20" min="0" style="width:100%; padding:10px 12px; background:#120e0d; border:1px solid var(--border-color); border-radius:6px; color:#fff; font-size:0.95rem; outline:none;" required>
+              <input type="number" id="inlineNewStock" value="${draftNewProduct.stock !== undefined ? draftNewProduct.stock : 20}" oninput="draftNewProduct.stock = this.value" min="0" style="width:100%; padding:10px 12px; background:#140f0e; border:1px solid var(--border-color); border-radius:6px; color:#ffffff; font-size:0.95rem; outline:none; pointer-events:auto; user-select:text; -webkit-user-select:text; cursor:text; z-index:10; position:relative;" required>
             </div>
           </div>
 
           <div style="margin-bottom:14px;">
             <label style="font-size:0.8rem; font-weight:700; color:#fff; display:block; margin-bottom:4px;">Descrizione / Ingredienti del Piatto</label>
-            <textarea id="inlineNewDesc" rows="2" placeholder="Es. Cotto allo spiedo a legna con erbe aromatiche..." style="width:100%; padding:10px 12px; background:#120e0d; border:1px solid var(--border-color); border-radius:6px; color:#fff; font-size:0.9rem; outline:none; resize:vertical;"></textarea>
+            <textarea id="inlineNewDesc" rows="2" oninput="draftNewProduct.description = this.value" placeholder="Es. Cotto allo spiedo a legna con erbe aromatiche..." style="width:100%; padding:10px 12px; background:#140f0e; border:1px solid var(--border-color); border-radius:6px; color:#ffffff; font-size:0.9rem; outline:none; resize:vertical; pointer-events:auto; user-select:text; -webkit-user-select:text; cursor:text; z-index:10; position:relative;">${escapeHtml(draftNewProduct.description || '')}</textarea>
           </div>
 
           <div style="display:flex; gap:10px; justify-content:flex-end;">
@@ -1363,8 +1382,14 @@ document.addEventListener('DOMContentLoaded', () => {
     html += allProducts.map(p => {
       // 2. If this product is being edited inline
       if (editingProductId === p.id) {
+        const curName = draftEditProduct.name !== undefined ? draftEditProduct.name : p.name;
+        const curPrice = draftEditProduct.price !== undefined ? draftEditProduct.price : p.price;
+        const curStock = draftEditProduct.stock !== undefined ? draftEditProduct.stock : (p.stock !== undefined ? p.stock : 10);
+        const curCat = draftEditProduct.category !== undefined ? draftEditProduct.category : (p.category || 'pollo');
+        const curDesc = draftEditProduct.description !== undefined ? draftEditProduct.description : (p.description || '');
+
         return `
-          <div class="menu-editor-card" style="background:#221b18; border:2px solid var(--gold-primary); box-shadow:0 0 20px rgba(212,175,55,0.35); padding:16px;">
+          <div class="menu-editor-card" style="background:#221b18; border:2px solid var(--gold-primary); box-shadow:0 0 20px rgba(212,175,55,0.35); padding:16px; position:relative; z-index:20;">
             <div style="font-size:0.95rem; font-weight:800; color:var(--gold-light); margin-bottom:12px; display:flex; align-items:center; gap:6px;">
               <i class="fa-solid fa-pen-to-square"></i> Modifica: "${escapeHtml(p.name)}"
             </div>
@@ -1372,30 +1397,30 @@ document.addEventListener('DOMContentLoaded', () => {
             <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;">
               <div>
                 <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:3px;">Nome Piatto:</label>
-                <input type="text" id="inlineEditName_${p.id}" value="${escapeHtml(p.name)}" style="width:100%; padding:8px 10px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px; color:#fff; font-weight:700;">
+                <input type="text" id="inlineEditName_${p.id}" value="${escapeHtml(curName)}" oninput="draftEditProduct.name = this.value" style="width:100%; padding:8px 10px; background:#140f0e; border:1px solid var(--border-color); border-radius:4px; color:#ffffff; font-weight:700; pointer-events:auto; user-select:text; -webkit-user-select:text; cursor:text;">
               </div>
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
                 <div>
                   <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:3px;">Prezzo (€):</label>
-                  <input type="number" step="0.10" id="inlineEditPrice_${p.id}" value="${Number(p.price).toFixed(2)}" style="width:100%; padding:8px 10px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px; color:#fff; font-weight:700;">
+                  <input type="number" step="0.10" id="inlineEditPrice_${p.id}" value="${curPrice}" oninput="draftEditProduct.price = this.value" style="width:100%; padding:8px 10px; background:#140f0e; border:1px solid var(--border-color); border-radius:4px; color:#ffffff; font-weight:700; pointer-events:auto; user-select:text; -webkit-user-select:text; cursor:text;">
                 </div>
                 <div>
                   <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:3px;">Scorte (Pz):</label>
-                  <input type="number" min="0" id="inlineEditStock_${p.id}" value="${p.stock !== undefined ? p.stock : 10}" style="width:100%; padding:8px 10px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px; color:#fff; font-weight:700;">
+                  <input type="number" min="0" id="inlineEditStock_${p.id}" value="${curStock}" oninput="draftEditProduct.stock = this.value" style="width:100%; padding:8px 10px; background:#140f0e; border:1px solid var(--border-color); border-radius:4px; color:#ffffff; font-weight:700; pointer-events:auto; user-select:text; -webkit-user-select:text; cursor:text;">
                 </div>
               </div>
               <div>
                 <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:3px;">Categoria:</label>
-                <select id="inlineEditCat_${p.id}" style="width:100%; padding:8px 10px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px; color:#fff;">
-                  <option value="pollo" ${p.category === 'pollo' ? 'selected' : ''}>🍗 Pollo</option>
-                  <option value="sfizio" ${p.category === 'sfizio' ? 'selected' : ''}>🍟 Sfizio / Contorno</option>
-                  <option value="bibite" ${p.category === 'bibite' ? 'selected' : ''}>🥤 Bibite</option>
-                  <option value="box" ${p.category === 'box' ? 'selected' : ''}>📦 Box</option>
+                <select id="inlineEditCat_${p.id}" onchange="draftEditProduct.category = this.value" style="width:100%; padding:8px 10px; background:#140f0e; border:1px solid var(--border-color); border-radius:4px; color:#ffffff; pointer-events:auto; cursor:pointer;">
+                  <option value="pollo" ${curCat === 'pollo' ? 'selected' : ''}>🍗 Pollo</option>
+                  <option value="sfizio" ${curCat === 'sfizio' ? 'selected' : ''}>🍟 Sfizio / Contorno</option>
+                  <option value="bibite" ${curCat === 'bibite' ? 'selected' : ''}>🥤 Bibite</option>
+                  <option value="box" ${curCat === 'box' ? 'selected' : ''}>📦 Box</option>
                 </select>
               </div>
               <div>
                 <label style="font-size:0.75rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:3px;">Descrizione:</label>
-                <textarea id="inlineEditDesc_${p.id}" rows="2" style="width:100%; padding:8px 10px; background:#120e0d; border:1px solid var(--border-color); border-radius:4px; color:#fff; font-size:0.85rem; resize:vertical;">${escapeHtml(p.description || '')}</textarea>
+                <textarea id="inlineEditDesc_${p.id}" rows="2" oninput="draftEditProduct.description = this.value" style="width:100%; padding:8px 10px; background:#140f0e; border:1px solid var(--border-color); border-radius:4px; color:#ffffff; font-size:0.85rem; resize:vertical; pointer-events:auto; user-select:text; -webkit-user-select:text; cursor:text;">${escapeHtml(curDesc)}</textarea>
               </div>
             </div>
 
@@ -1485,6 +1510,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.openAddProductModal = function() {
     isCreatingNewProduct = true;
     editingProductId = null;
+    draftNewProduct = { name: '', category: 'pollo', price: '', stock: 20, description: '' };
     renderMenuEditor();
     setTimeout(() => {
       const input = document.getElementById('inlineNewName');
@@ -1492,11 +1518,12 @@ document.addEventListener('DOMContentLoaded', () => {
         input.focus();
         input.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-    }, 50);
+    }, 60);
   };
 
   window.adminCancelInlineNewProduct = function() {
     isCreatingNewProduct = false;
+    draftNewProduct = { name: '', category: 'pollo', price: '', stock: 20, description: '' };
     renderMenuEditor();
   };
 
@@ -1507,11 +1534,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const stockInput = document.getElementById('inlineNewStock');
     const descInput = document.getElementById('inlineNewDesc');
 
-    const name = nameInput ? nameInput.value.trim() : '';
-    const category = catInput ? catInput.value : 'pollo';
-    const price = priceInput ? parseFloat(priceInput.value) : 0;
-    const stock = stockInput ? (parseInt(stockInput.value, 10) || 0) : 15;
-    const desc = descInput ? descInput.value.trim() : '';
+    const name = nameInput ? nameInput.value.trim() : (draftNewProduct.name || '');
+    const category = catInput ? catInput.value : (draftNewProduct.category || 'pollo');
+    const price = priceInput ? parseFloat(priceInput.value) : (parseFloat(draftNewProduct.price) || 0);
+    const stock = stockInput ? (parseInt(stockInput.value, 10) || 0) : (parseInt(draftNewProduct.stock, 10) || 15);
+    const desc = descInput ? descInput.value.trim() : (draftNewProduct.description || '');
 
     if (!name || isNaN(price) || price <= 0) {
       alert('⚠️ Inserisci un Nome e un Prezzo valido per il nuovo piatto.');
@@ -1531,6 +1558,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     allProducts.push(newProd);
     isCreatingNewProduct = false;
+    draftNewProduct = { name: '', category: 'pollo', price: '', stock: 20, description: '' };
     saveAndBroadcastMenu();
     renderMenuEditor();
     showAdminToast(`✅ Nuovo piatto "${name}" aggiunto con ${stock} pezzi al menu!`);
@@ -1545,8 +1573,19 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.adminEditProduct = function(productId) {
+    const p = allProducts.find(it => it.id === productId);
+    if (!p) return;
+
     editingProductId = productId;
     isCreatingNewProduct = false;
+    draftEditProduct = {
+      name: p.name,
+      category: p.category || 'pollo',
+      price: Number(p.price || 0).toFixed(2),
+      stock: p.stock !== undefined ? p.stock : 10,
+      description: p.description || ''
+    };
+
     renderMenuEditor();
     setTimeout(() => {
       const input = document.getElementById(`inlineEditName_${productId}`);
@@ -1554,11 +1593,12 @@ document.addEventListener('DOMContentLoaded', () => {
         input.focus();
         input.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-    }, 50);
+    }, 60);
   };
 
   window.adminCancelInlineEditProduct = function() {
     editingProductId = null;
+    draftEditProduct = {};
     renderMenuEditor();
   };
 
@@ -1572,11 +1612,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const catInput = document.getElementById(`inlineEditCat_${productId}`);
     const descInput = document.getElementById(`inlineEditDesc_${productId}`);
 
-    const name = nameInput ? nameInput.value.trim() : prod.name;
-    const price = priceInput ? parseFloat(priceInput.value) : prod.price;
-    const stock = stockInput ? (parseInt(stockInput.value, 10) || 0) : prod.stock;
-    const category = catInput ? catInput.value : prod.category;
-    const desc = descInput ? descInput.value.trim() : prod.description;
+    const name = nameInput ? nameInput.value.trim() : (draftEditProduct.name || prod.name);
+    const price = priceInput ? parseFloat(priceInput.value) : (parseFloat(draftEditProduct.price) || prod.price);
+    const stock = stockInput ? (parseInt(stockInput.value, 10) || 0) : (parseInt(draftEditProduct.stock, 10) || prod.stock);
+    const category = catInput ? catInput.value : (draftEditProduct.category || prod.category);
+    const desc = descInput ? descInput.value.trim() : (draftEditProduct.description !== undefined ? draftEditProduct.description : prod.description);
 
     if (!name || isNaN(price) || price <= 0) {
       alert('⚠️ Inserisci un Nome e un Prezzo valido.');
@@ -1591,6 +1631,7 @@ document.addEventListener('DOMContentLoaded', () => {
     prod.available = stock > 0;
 
     editingProductId = null;
+    draftEditProduct = {};
     saveAndBroadcastMenu();
     renderMenuEditor();
     showAdminToast(`✅ Piatto "${name}" aggiornato con successo!`);
