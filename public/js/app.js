@@ -875,6 +875,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (form) form.reset();
     window.appSetOrderType('ritiro');
     setupDateTimeFields();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     showToast('Pronto per una nuova prenotazione!');
   };
 
@@ -993,6 +994,54 @@ document.addEventListener('DOMContentLoaded', () => {
       toast.classList.add('hide');
       setTimeout(() => toast.remove(), 300);
     }, 2800);
+  }
+
+  // ---------------- PWA SERVICE WORKER & ANDROID INSTALL ----------------
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').then((reg) => {
+        console.log('Service Worker registrato con successo:', reg.scope);
+      }).catch((err) => {
+        console.log('Registrazione Service Worker fallita:', err);
+      });
+    });
+  }
+
+  // Handle Android PWA Install Prompt
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const banner = document.getElementById('pwaInstallBanner');
+    if (banner && !sessionStorage.getItem('pwa_banner_dismissed')) {
+      banner.style.display = 'flex';
+    }
+  });
+
+  const pwaInstallBtn = document.getElementById('pwaInstallBtn');
+  const pwaDismissBtn = document.getElementById('pwaDismissBtn');
+  const pwaBanner = document.getElementById('pwaInstallBanner');
+
+  if (pwaInstallBtn) {
+    pwaInstallBtn.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          if (pwaBanner) pwaBanner.style.display = 'none';
+        }
+        deferredPrompt = null;
+      } else {
+        alert("📲 Per aggiungere l'App alla schermata Home:\n1. Tocca i 3 puntini in alto a destra su Chrome\n2. Seleziona 'Aggiungi a schermata Home' o 'Installa app'");
+      }
+    });
+  }
+
+  if (pwaDismissBtn && pwaBanner) {
+    pwaDismissBtn.addEventListener('click', () => {
+      pwaBanner.style.display = 'none';
+      sessionStorage.setItem('pwa_banner_dismissed', 'true');
+    });
   }
 
   window.showToast = showToast;
